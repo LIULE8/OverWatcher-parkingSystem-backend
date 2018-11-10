@@ -17,7 +17,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -26,7 +25,7 @@ import java.util.stream.Collectors;
  * @author LIULE9
  */
 @RestController
-@RequestMapping("/orders")
+@RequestMapping("orders")
 @Slf4j
 public class OrdersController {
 
@@ -44,25 +43,15 @@ public class OrdersController {
   }
 
   /**
-   * 查询所有订单
-   *
-   * @return
-   */
-  @GetMapping
-  public ResponseEntity<List<Orders>> getOrders() {
-    return ResponseEntity.ok(ordersService.getOrders());
-  }
-
-  /**
    * 查询所有订单,分页查询
    *
    * @param pageSize
    * @param curPage
    * @return
    */
-  @GetMapping("/{pageSize}/{curPage}")
-  public ResponseEntity<List<Orders>> getOrdersByPage(@PathVariable("pageSize") Integer pageSize,
-                                                      @PathVariable("curPage") Integer curPage) {
+  @GetMapping
+  public ResponseEntity<List<Orders>> getOrdersByPage(@RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
+                                                      @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
     PageRequest pageRequest = PageRequest.of(curPage, pageSize);
     return ResponseEntity.ok(ordersService.getOrders(pageRequest).getContent());
   }
@@ -73,11 +62,11 @@ public class OrdersController {
    * @param orderId
    * @return
    */
-  @GetMapping("/{id}")
-  public ResponseEntity<List<Orders>> getOrdersByOrderId(@PathVariable("id") Integer orderId) {
-    Optional<Orders> orderOptional = ordersService.findById(orderId);
+  @GetMapping("{orderId}")
+  public ResponseEntity<Orders> getOrdersByOrderId(@PathVariable("orderId") Integer orderId) {
+    Optional<Orders> orderOptional = ordersService.findOrderByOrderId(orderId);
     if (orderOptional.isPresent()) {
-      return ResponseEntity.ok(Collections.singletonList(orderOptional.get()));
+      return ResponseEntity.ok(orderOptional.get());
     }
     log.error("【查询订单详情】 订单id不正确, orderId={}", orderId);
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
@@ -85,24 +74,29 @@ public class OrdersController {
 
 
   /**
-   * 查询所有抢单后的订单
-   *
-   * @param boyId
-   * @return
-   */
-  @GetMapping("/after/{boyId}")
-  public ResponseEntity<List<OrdersDTO>> findAfterOrder(@PathVariable("boyId") Integer boyId) {
-    return ResponseEntity.ok(Order2OrderDTOConverter.convert(ordersService.findAfterOrder(boyId)));
-  }
-
-  /**
-   * 根据 车牌 carid 查询还在停车场的订单
+   * 根据车牌carId查询该车牌的所有订单
    *
    * @param carId
    * @return
    */
-  @GetMapping("/carId")
-  public ResponseEntity<Orders> findByCarId(String carId) {
+  @GetMapping("carId")
+  public ResponseEntity<List<Orders>> findAllOrderWhichCarIdIs(@RequestParam("carId") String carId) {
+    if (StringUtils.isNotBlank(carId)) {
+      return ResponseEntity.ok(ordersService.findAllOrderWhichCarIdIs(carId));
+    }
+    log.error("【根据车牌carId查询该车牌的所有订单】 carId 错误, carId={}", carId);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+  }
+
+
+  /**
+   * 根据车牌 carId 查询还在停车场的订单
+   *
+   * @param carId
+   * @return
+   */
+  @GetMapping("carId/{carId}")
+  public ResponseEntity<Orders> findOrderWhichCarInParkingLotByCarId(@PathVariable("carId") String carId) {
     if (StringUtils.isNotBlank(carId)) {
       Optional<Orders> orderOptional = ordersService.findOrderWhichCarInParkingLotByCarId(carId);
       if (orderOptional.isPresent()) {
@@ -113,6 +107,38 @@ public class OrdersController {
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
   }
 
+  /**
+   * 根据条件分页查询所有订单
+   *
+   * @param condition
+   * @param value
+   * @param pageSize
+   * @param curPage
+   * @return
+   */
+  @GetMapping("criteria")
+  public ResponseEntity<List<Orders>> findAllOrdersByConditionAndPage(@RequestParam("condition") String condition,
+                                                                      @RequestParam("value") String value,
+                                                                      @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
+                                                                      @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
+    if (StringUtils.isNotBlank(condition) && StringUtils.isNotBlank(value)) {
+      return ResponseEntity.ok(ordersService.findByCondition(condition, value, PageRequest.of(curPage, pageSize)));
+    }
+    log.error("【条件查询】参数错误, condition={}, value={}", condition, value);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+  }
+
+  /**
+   * 查询所有抢单后的订单
+   *
+   * @param boyId
+   * @return
+   */
+  @GetMapping("after/{boyId}")
+  public ResponseEntity<List<OrdersDTO>> findAfterOrder(@PathVariable("boyId") Integer boyId) {
+    return ResponseEntity.ok(Order2OrderDTOConverter.convert(ordersService.findAfterOrder(boyId)));
+  }
+
 
   /**
    * 创建停车订单
@@ -121,62 +147,53 @@ public class OrdersController {
    * @return
    */
   @PostMapping
-  public List<Orders> addParkOrders(@RequestBody Orders orders) {
-    if (ordersService.isExistInParkingLotCarId(orders.getCarId())) {
-      return null;
-    } else {
-      return ordersService.addOrders(orders);
+  public ResponseEntity<List<Orders>> addParkOrders(@RequestBody Orders orders) {
+    if (StringUtils.isNotBlank(orders.getCarId()) && !ordersService.isExistInParkingLotCarId(orders.getCarId())) {
+      return ResponseEntity.ok(ordersService.addOrders(orders));
     }
+    log.error("【创建停车订单】 carId错误或者car已经存在停车场 , orders={}", orders);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
   }
 
-  //根据车牌carid查询该车牌的所有订单
-  @GetMapping("/carIds")
-  public List<Orders> findByCarIds(String carId) {
-    return ordersService.findByCarIds(carId);
-  }
-
-  //根据状态STATUS查询订单
-  @GetMapping("/status")
-  public List<Orders> findByStatus(String status) {
-    return ordersService.findByStatus(status);
-  }
-
-  //根据类型type查询订单
-  @GetMapping("/type")
-
-  public List<Orders> findByType(String type) {
-    return ordersService.findByType(type);
-  }
-
-  //根据条件查询
-  @GetMapping("condition")
-  public List<Orders> findByCondition(String condition, String value) {
-    return ordersService.findByCondition(condition, value);
-  }
-
-
-  //停车：指定停车员给订单
-  @PutMapping("/{OrderId}/parkingBoy/{BoyId}")
-  public OrdersDTO setUsersToOrders(@PathVariable int OrderId, @PathVariable Long BoyId) {
-    User boy = userRepository.findById(BoyId).get();
-    List<ParkingLot> parkingLots = boy.getParkingLotList();
-    Orders orders = ordersService.findById(OrderId).get();
-    orders.setUser(boy);
-    if (parkingLots.stream().filter(x -> x.getSize() != 0).collect(Collectors.toList()).size() != 0) {
-      ordersService.updateUserIdById(OrderId, BoyId);
-      ordersService.updateStatusById(OrderId, OrderStatusEnum.YES.getMessage());
+  /**
+   * 停车：管理员分配某个订单给指定的停车员
+   * @param orderId
+   * @param boyId
+   * @return
+   */
+  @PutMapping("/{orderId}/parkingBoy/{boyId}")
+  public ResponseEntity<OrdersDTO> setUsersToOrders(@PathVariable("orderId") Integer orderId,
+                                                    @PathVariable("boyId") Long boyId) {
+    Optional<User> userOptional = userRepository.findById(boyId);
+    if (userOptional.isPresent()){
+      Optional<Orders> orderOptional = ordersService.findOrderByOrderId(orderId);
+      if (orderOptional.isPresent()){
+        User parkingBoy = userOptional.get();
+        List<ParkingLot> parkingLots = parkingBoy.getParkingLotList();
+        if (parkingLots.stream().filter(x -> x.getSize() != 0).collect(Collectors.toList()).size() != 0) {
+          Orders orders = orderOptional.get();
+          orders.setUser(parkingBoy);
+          ordersService.updateUserIdById(orderId, boyId);
+          ordersService.updateStatusById(orderId, OrderStatusEnum.YES.getMessage());
+          return ResponseEntity.ok(Order2OrderDTOConverter.convert(orders));
+        }
+        log.error("【管理员分配某个订单给指定的停车员】 该停车员管理的停车场全部停满，分配失败, orderId={}, boyId={}",orderId,boyId);
+        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body(null);
+      }
     }
-    return Order2OrderDTOConverter.convert(orders);
+
+    log.error("【管理员分配某个订单给指定的停车员】 参数错误, orderId={}, boyId={}",orderId,boyId);
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
   }
 
   //停车：指定停车场给订单
   @PutMapping("/{OrderId}/parkingLot/{ParkingLotId}")
-  public OrdersDTO setParkingLotToOrders(@PathVariable int OrderId, @PathVariable Long ParkingLotId) {
-    ordersService.updateParkingLotIdById(OrderId, ParkingLotId);
-    int size = parkingLotRepository.findById(ParkingLotId).get().getSize() - 1;
-    parkingLotRepository.updateSizeById(ParkingLotId, size);
-    ordersService.updateStatusById(OrderId, OrderStatusEnum.PARK_DONE.getMessage());
-    return Order2OrderDTOConverter.convert(ordersService.findById(OrderId).get());
+  public OrdersDTO setParkingLotToOrders(@PathVariable int orderId, @PathVariable Long parkingLotId) {
+    ordersService.updateParkingLotIdById(orderId, parkingLotId);
+    int size = parkingLotRepository.findById(parkingLotId).get().getSize() - 1;
+    parkingLotRepository.updateSizeById(parkingLotId, size);
+    ordersService.updateStatusById(orderId, OrderStatusEnum.PARK_DONE.getMessage());
+    return Order2OrderDTOConverter.convert(ordersService.findOrderByOrderId(orderId).get());
   }
 
   //用户取车，订单变为取车
@@ -196,9 +213,9 @@ public class OrdersController {
   @PutMapping("/boyUnParkCarId")
   public OrdersDTO unPark(String boyUnParkCarId) {
 //    Orders orders = ordersService.findByCarId(boyUnParkCarId);
-//    ParkingLot parkingLot = parkingLotRepository.findById(ordersService.getParkingLotId(orders.getOrderId())).get();
+//    ParkingLot parkingLot = parkingLotRepository.findOrderByOrderId(ordersService.getParkingLotId(orders.getOrderId())).get();
 //    Long parkingLotId = parkingLot.getId();
-//    int size = parkingLotRepository.findById(parkingLotId).get().getSize() + 1;
+//    int size = parkingLotRepository.findOrderByOrderId(parkingLotId).get().getSize() + 1;
 //    parkingLotRepository.updateSizeById(parkingLotId, size);
 //    ordersService.updateStatusById(orders.getOrderId(), OrderStatusEnum.UNPARK_DONE.getMessage());
 //    orders.setOrderStatus(OrderStatusEnum.UNPARK_DONE.getMessage());

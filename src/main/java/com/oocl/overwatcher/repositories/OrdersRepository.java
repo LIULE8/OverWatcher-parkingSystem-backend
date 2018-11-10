@@ -19,7 +19,6 @@ import java.util.Optional;
 @Repository
 public interface OrdersRepository extends JpaRepository<Orders,Integer>, JpaSpecificationExecutor<Orders> {
 
-//    @Query(value = "select * from orders where car_id = ?1 and status<>'取车完成'", nativeQuery = true)
     Optional<Orders> findByCarIdAndOrderStatusNot(String carId, String orderStatus);
 
     @Query(value = "update orders set `status` = ?2 where id = ?1", nativeQuery = true)
@@ -34,17 +33,7 @@ public interface OrdersRepository extends JpaRepository<Orders,Integer>, JpaSpec
     @Modifying
     void updateParkingLotIdById(int orderId, Long parkinglot_id);
 
-    @Query(value = "select `parkinglot_id` from orders where id = ?1", nativeQuery = true)
-    Long findParkinglotIdById(int id);
-
-    @Query(value = "select * from orders where status = ?1 and type = '存车'", nativeQuery = true)
-    List<Orders> findByStaus(String status);
-
-    @Query(value = "select * from orders where type = ?1", nativeQuery = true)
-    List<Orders> findByType(String type);
-
-    @Query(value = "select * from orders where car_id = ?1", nativeQuery = true)
-    List<Orders> findByCarIds(String carId);
+    List<Orders> findByCarId(String carId);
 
     @Query(value = "select * from orders where `user_id` = ?1 and status='存取中'", nativeQuery = true)
     List<Orders> findAfterOrder(int boyId);
