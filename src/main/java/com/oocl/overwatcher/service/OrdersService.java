@@ -1,7 +1,7 @@
 package com.oocl.overwatcher.service;
 
 import com.oocl.overwatcher.converter.Order2OrderDTOConverter;
-import com.oocl.overwatcher.dto.OrdersDTO;
+import com.oocl.overwatcher.dto.OrderDTO;
 import com.oocl.overwatcher.entities.Orders;
 import com.oocl.overwatcher.entities.ParkingLot;
 import com.oocl.overwatcher.entities.User;
@@ -95,7 +95,7 @@ public class OrdersService {
   }
 
   @Transactional
-  public OrdersDTO assignOrderToParkingBoy(Integer orderId, Long boyId) {
+  public OrderDTO assignOrderToParkingBoy(Integer orderId, Long boyId) {
     Optional<User> userOptional = userRepository.findById(boyId);
     if (userOptional.isPresent()) {
       Optional<Orders> orderOptional = ordersRepository.findById(orderId);
@@ -115,7 +115,7 @@ public class OrdersService {
   }
 
   @Transactional(rollbackOn = RuntimeException.class)
-  public OrdersDTO finishParkOrder(Integer orderId, Long parkingLotId) {
+  public OrderDTO finishParkOrder(Integer orderId, Long parkingLotId) {
     //1. 停车场的容量减一
     Optional<ParkingLot> parkingLogOptional = parkingLotRepository.findById(parkingLotId);
     if (parkingLogOptional.isPresent()) {
@@ -140,7 +140,7 @@ public class OrdersService {
   }
 
   @Transactional
-  public OrdersDTO createUnParkOrders(String carId) {
+  public OrderDTO createUnParkOrders(String carId) {
     if (StringUtils.isNotBlank(carId)) {
       throw new RuntimeException("参数错误");
     }
@@ -159,7 +159,7 @@ public class OrdersService {
   }
 
   @Transactional
-  public OrdersDTO finishUnParkOrder(String carId) {
+  public OrderDTO finishUnParkOrder(String carId) {
     if (StringUtils.isNotBlank(carId)) {
       throw new RuntimeException("参数错误");
     }

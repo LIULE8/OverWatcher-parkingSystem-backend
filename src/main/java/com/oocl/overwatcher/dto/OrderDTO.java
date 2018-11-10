@@ -9,7 +9,7 @@ import java.time.ZonedDateTime;
  * @author LIULE9
  */
 @Data
-public class OrdersDTO {
+public class OrderDTO {
 
   private Integer orderId;
 

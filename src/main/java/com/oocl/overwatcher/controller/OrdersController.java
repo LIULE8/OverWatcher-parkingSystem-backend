@@ -1,7 +1,7 @@
 package com.oocl.overwatcher.controller;
 
 import com.oocl.overwatcher.converter.Order2OrderDTOConverter;
-import com.oocl.overwatcher.dto.OrdersDTO;
+import com.oocl.overwatcher.dto.OrderDTO;
 import com.oocl.overwatcher.entities.Orders;
 import com.oocl.overwatcher.service.OrdersService;
 import lombok.extern.slf4j.Slf4j;
@@ -124,7 +124,7 @@ public class OrdersController {
    * @return
    */
   @GetMapping("after/{boyId}")
-  public ResponseEntity<List<OrdersDTO>> findAfterOrder(@PathVariable("boyId") Long boyId) {
+  public ResponseEntity<List<OrderDTO>> findAfterOrder(@PathVariable("boyId") Long boyId) {
     return ResponseEntity.ok(Order2OrderDTOConverter.convert(ordersService.findAfterOrder(boyId)));
   }
 
@@ -152,8 +152,8 @@ public class OrdersController {
    * @return
    */
   @PutMapping("/{orderId}/parkingBoy/{boyId}")
-  public ResponseEntity<OrdersDTO> assignOrderToParkingBoy(@PathVariable("orderId") Integer orderId,
-                                                           @PathVariable("boyId") Long boyId) {
+  public ResponseEntity<OrderDTO> assignOrderToParkingBoy(@PathVariable("orderId") Integer orderId,
+                                                          @PathVariable("boyId") Long boyId) {
     try {
       return ResponseEntity.ok(ordersService.assignOrderToParkingBoy(orderId, boyId));
     } catch (Exception e) {
@@ -173,8 +173,8 @@ public class OrdersController {
    * @return
    */
   @PutMapping("/{orderId}/parkingLot/{parkingLotId}")
-  public ResponseEntity<OrdersDTO> finishParkOrder(@PathVariable("orderId") Integer orderId,
-                                                   @PathVariable("parkingLotId") Long parkingLotId) {
+  public ResponseEntity<OrderDTO> finishParkOrder(@PathVariable("orderId") Integer orderId,
+                                                  @PathVariable("parkingLotId") Long parkingLotId) {
     try {
       return ResponseEntity.ok(ordersService.finishParkOrder(orderId, parkingLotId));
     } catch (Exception e) {
@@ -192,7 +192,7 @@ public class OrdersController {
    * @return
    */
   @PostMapping("/createUnParkOrder/{carId}")
-  public ResponseEntity<OrdersDTO> createUnParkOrder(@PathVariable("carId") String carId) {
+  public ResponseEntity<OrderDTO> createUnParkOrder(@PathVariable("carId") String carId) {
     try {
       return ResponseEntity.status(HttpStatus.CREATED).body(ordersService.createUnParkOrders(carId));
     } catch (Exception e) {
@@ -211,7 +211,7 @@ public class OrdersController {
    * @return
    */
   @PutMapping("/finishUnParkOrder/{carId}")
-  public ResponseEntity<OrdersDTO> finishUnParkOrder(@PathVariable("carId") String carId) {
+  public ResponseEntity<OrderDTO> finishUnParkOrder(@PathVariable("carId") String carId) {
     try {
       return ResponseEntity.ok(ordersService.finishUnParkOrder(carId));
     } catch (Exception e) {
