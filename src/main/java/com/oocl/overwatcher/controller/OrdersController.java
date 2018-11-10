@@ -3,11 +3,6 @@ package com.oocl.overwatcher.controller;
 import com.oocl.overwatcher.converter.Order2OrderDTOConverter;
 import com.oocl.overwatcher.dto.OrdersDTO;
 import com.oocl.overwatcher.entities.Orders;
-import com.oocl.overwatcher.entities.ParkingLot;
-import com.oocl.overwatcher.entities.User;
-import com.oocl.overwatcher.enums.OrderStatusEnum;
-import com.oocl.overwatcher.repositories.ParkingLotRepository;
-import com.oocl.overwatcher.repositories.UserRepository;
 import com.oocl.overwatcher.service.OrdersService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -19,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * @author LIULE9
@@ -31,15 +25,10 @@ public class OrdersController {
 
   private final OrdersService ordersService;
 
-  private final UserRepository userRepository;
-
-  private final ParkingLotRepository parkingLotRepository;
 
   @Autowired
-  public OrdersController(OrdersService ordersService, UserRepository userRepository, ParkingLotRepository parkingLotRepository) {
+  public OrdersController(OrdersService ordersService) {
     this.ordersService = ordersService;
-    this.userRepository = userRepository;
-    this.parkingLotRepository = parkingLotRepository;
   }
 
   /**
@@ -135,7 +124,7 @@ public class OrdersController {
    * @return
    */
   @GetMapping("after/{boyId}")
-  public ResponseEntity<List<OrdersDTO>> findAfterOrder(@PathVariable("boyId") Integer boyId) {
+  public ResponseEntity<List<OrdersDTO>> findAfterOrder(@PathVariable("boyId") Long boyId) {
     return ResponseEntity.ok(Order2OrderDTOConverter.convert(ordersService.findAfterOrder(boyId)));
   }
 
@@ -147,7 +136,7 @@ public class OrdersController {
    * @return
    */
   @PostMapping
-  public ResponseEntity<List<Orders>> addParkOrders(@RequestBody Orders orders) {
+  public ResponseEntity<List<Orders>> createParkOrder(@RequestBody Orders orders) {
     if (StringUtils.isNotBlank(orders.getCarId()) && !ordersService.isExistInParkingLotCarId(orders.getCarId())) {
       return ResponseEntity.ok(ordersService.addOrders(orders));
     }
@@ -156,85 +145,92 @@ public class OrdersController {
   }
 
   /**
-   * 停车：管理员分配某个订单给指定的停车员
+   * 管理员分配某个订单给指定的停车员
+   *
    * @param orderId
    * @param boyId
    * @return
    */
   @PutMapping("/{orderId}/parkingBoy/{boyId}")
-  public ResponseEntity<OrdersDTO> setUsersToOrders(@PathVariable("orderId") Integer orderId,
-                                                    @PathVariable("boyId") Long boyId) {
-    Optional<User> userOptional = userRepository.findById(boyId);
-    if (userOptional.isPresent()){
-      Optional<Orders> orderOptional = ordersService.findOrderByOrderId(orderId);
-      if (orderOptional.isPresent()){
-        User parkingBoy = userOptional.get();
-        List<ParkingLot> parkingLots = parkingBoy.getParkingLotList();
-        if (parkingLots.stream().filter(x -> x.getSize() != 0).collect(Collectors.toList()).size() != 0) {
-          Orders orders = orderOptional.get();
-          orders.setUser(parkingBoy);
-          ordersService.updateUserIdById(orderId, boyId);
-          ordersService.updateStatusById(orderId, OrderStatusEnum.YES.getMessage());
-          return ResponseEntity.ok(Order2OrderDTOConverter.convert(orders));
-        }
-        log.error("【管理员分配某个订单给指定的停车员】 该停车员管理的停车场全部停满，分配失败, orderId={}, boyId={}",orderId,boyId);
-        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).body(null);
-      }
+  public ResponseEntity<OrdersDTO> assignOrderToParkingBoy(@PathVariable("orderId") Integer orderId,
+                                                           @PathVariable("boyId") Long boyId) {
+    try {
+      return ResponseEntity.ok(ordersService.assignOrderToParkingBoy(orderId, boyId));
+    } catch (Exception e) {
+      log.error("【管理员分配某个订单给指定的停车员】 "
+          .concat(e.getMessage())
+          .concat(", orderId={}, boyId={}"), orderId, boyId);
     }
-
-    log.error("【管理员分配某个订单给指定的停车员】 参数错误, orderId={}, boyId={}",orderId,boyId);
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
   }
 
-  //停车：指定停车场给订单
-  @PutMapping("/{OrderId}/parkingLot/{ParkingLotId}")
-  public OrdersDTO setParkingLotToOrders(@PathVariable int orderId, @PathVariable Long parkingLotId) {
-    ordersService.updateParkingLotIdById(orderId, parkingLotId);
-    int size = parkingLotRepository.findById(parkingLotId).get().getSize() - 1;
-    parkingLotRepository.updateSizeById(parkingLotId, size);
-    ordersService.updateStatusById(orderId, OrderStatusEnum.PARK_DONE.getMessage());
-    return Order2OrderDTOConverter.convert(ordersService.findOrderByOrderId(orderId).get());
+  /**
+   * 停车员结束订单（抢单，停车完成）
+   * 手机端
+   *
+   * @param orderId
+   * @param parkingLotId
+   * @return
+   */
+  @PutMapping("/{orderId}/parkingLot/{parkingLotId}")
+  public ResponseEntity<OrdersDTO> finishParkOrder(@PathVariable("orderId") Integer orderId,
+                                                   @PathVariable("parkingLotId") Long parkingLotId) {
+    try {
+      return ResponseEntity.ok(ordersService.finishParkOrder(orderId, parkingLotId));
+    } catch (Exception e) {
+      log.error("【停车员结束订单（抢单，停车完成）】 "
+          .concat(e.getMessage())
+          .concat(", orderId={}, parkingLotId={}"), orderId, parkingLotId);
+    }
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
   }
 
-  //用户取车，订单变为取车
-  @PostMapping("/userUnParkCarId")
-  public OrdersDTO addUnParkOrders(String userUnParkCarId) {
-//    if (ordersService.isExistInParkingLotCarId(userUnParkCarId)) {
-//      Orders orders = ordersService.findOrderWhichCarInParkingLotByCarId(userUnParkCarId);
-//      orders.setOrderType(OrderTypeEnum.UNPARK.getMessage());
-//      orders.setOrderStatus(OrderStatusEnum.YES.getMessage());
-//      ordersService.addOrders(orders);
-//    }
-    Optional<Orders> orderOptional = ordersService.findOrderWhichCarInParkingLotByCarId(userUnParkCarId);
-    return Order2OrderDTOConverter.convert(orderOptional.orElse(null));
+  /**
+   * 用户取车，创建取车订单,停车员尚未取车
+   *
+   * @param carId
+   * @return
+   */
+  @PostMapping("/createUnParkOrder/{carId}")
+  public ResponseEntity<OrdersDTO> createUnParkOrder(@PathVariable("carId") String carId) {
+    try {
+      return ResponseEntity.status(HttpStatus.CREATED).body(ordersService.createUnParkOrders(carId));
+    } catch (Exception e) {
+      log.error("【用户取车，创建取车订单,停车员尚未取车】 "
+          .concat(e.getMessage())
+          .concat(", carId={}"), carId);
+    }
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
   }
 
-  //停车员取车
-  @PutMapping("/boyUnParkCarId")
-  public OrdersDTO unPark(String boyUnParkCarId) {
-//    Orders orders = ordersService.findByCarId(boyUnParkCarId);
-//    ParkingLot parkingLot = parkingLotRepository.findOrderByOrderId(ordersService.getParkingLotId(orders.getOrderId())).get();
-//    Long parkingLotId = parkingLot.getId();
-//    int size = parkingLotRepository.findOrderByOrderId(parkingLotId).get().getSize() + 1;
-//    parkingLotRepository.updateSizeById(parkingLotId, size);
-//    ordersService.updateStatusById(orders.getOrderId(), OrderStatusEnum.UNPARK_DONE.getMessage());
-//    orders.setOrderStatus(OrderStatusEnum.UNPARK_DONE.getMessage());
-//    orders.setParkingLot(parkingLot);
-    //TODO 下面这句可以删除
-    Optional<Orders> orderOptional = ordersService.findOrderWhichCarInParkingLotByCarId(boyUnParkCarId);
-    return Order2OrderDTOConverter.convert(orderOptional.orElse(null));
+  /**
+   * 停车员取车, 结束取车订单
+   * 手机端
+   *
+   * @param carId
+   * @return
+   */
+  @PutMapping("/finishUnParkOrder/{carId}")
+  public ResponseEntity<OrdersDTO> finishUnParkOrder(@PathVariable("carId") String carId) {
+    try {
+      return ResponseEntity.ok(ordersService.finishUnParkOrder(carId));
+    } catch (Exception e) {
+      log.error("【停车员取车, 结束取车订单】 "
+          .concat(e.getMessage())
+          .concat(", carId={}"), carId);
+    }
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
   }
 
-  //根据订单ID查看停车场ID
-//    @GetMapping("/id")
-//    public Long findParkingLotIdByOrderId(int id) {
-//        return ordersService.getParkingLotId(id);
-//    }
-
-  //根据停车员ID查看历史订单
-  @GetMapping("/parkingBoy/{userId}")
-  public List<Orders> getHistoryByUserId(@PathVariable Long userId) {
-    return ordersService.getHistoryByUserId(userId);
+  /**
+   * 根据停车员ID查看历史订单
+   *
+   * @param userId
+   * @return
+   */
+  @GetMapping("/showHistoryOrders/{userId}")
+  public ResponseEntity<List<Orders>> showHistoryOrders(@PathVariable("userId") Long userId) {
+    return ResponseEntity.ok(ordersService.showHistoryOrdersByUserId(userId, "取车完成"));
   }
 
 }

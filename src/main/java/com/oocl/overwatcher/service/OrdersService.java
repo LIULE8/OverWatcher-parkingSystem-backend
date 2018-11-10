@@ -1,7 +1,17 @@
 package com.oocl.overwatcher.service;
 
+import com.oocl.overwatcher.converter.Order2OrderDTOConverter;
+import com.oocl.overwatcher.dto.OrdersDTO;
 import com.oocl.overwatcher.entities.Orders;
+import com.oocl.overwatcher.entities.ParkingLot;
+import com.oocl.overwatcher.entities.User;
+import com.oocl.overwatcher.enums.OrderStatusEnum;
+import com.oocl.overwatcher.enums.OrderTypeEnum;
 import com.oocl.overwatcher.repositories.OrdersRepository;
+import com.oocl.overwatcher.repositories.ParkingLotRepository;
+import com.oocl.overwatcher.repositories.UserRepository;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -12,6 +22,7 @@ import javax.persistence.criteria.Predicate;
 import javax.transaction.Transactional;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 /**
  * @author LIULE9
@@ -21,9 +32,15 @@ public class OrdersService {
 
   private final OrdersRepository ordersRepository;
 
+  private final UserRepository userRepository;
+
+  private final ParkingLotRepository parkingLotRepository;
+
   @Autowired
-  public OrdersService(OrdersRepository ordersRepository) {
+  public OrdersService(OrdersRepository ordersRepository, UserRepository userRepository, ParkingLotRepository parkingLotRepository) {
     this.ordersRepository = ordersRepository;
+    this.userRepository = userRepository;
+    this.parkingLotRepository = parkingLotRepository;
   }
 
   public Optional<Orders> findOrderByOrderId(Integer orderId) {
@@ -43,8 +60,10 @@ public class OrdersService {
     return ordersRepository.findByCarId(carId);
   }
 
-  public List<Orders> findAfterOrder(Integer boyId) {
-    return ordersRepository.findAfterOrder(boyId);
+  public List<Orders> findAfterOrder(Long boyId) {
+    User parkingBoy = new User();
+    parkingBoy.setId(boyId);
+    return ordersRepository.findByUserAndOrderStatus(parkingBoy, "存取中");
   }
 
   public List<Orders> findByCondition(String condition, String value, Pageable pageable) {
@@ -59,8 +78,10 @@ public class OrdersService {
     }, pageable).getContent();
   }
 
-  public List<Orders> getHistoryByUserId(Long userId) {
-    return ordersRepository.getHistoryByUserId(userId);
+  public List<Orders> showHistoryOrdersByUserId(Long userId, String status) {
+    User parkingBoy = new User();
+    parkingBoy.setId(userId);
+    return ordersRepository.findByUserAndOrderStatus(parkingBoy, status);
   }
 
   public Page<Orders> getOrders(PageRequest pageRequest) {
@@ -74,17 +95,85 @@ public class OrdersService {
   }
 
   @Transactional
-  public void updateUserIdById(int orderId, Long boyId) {
-    ordersRepository.updateUserIdById(orderId, boyId);
+  public OrdersDTO assignOrderToParkingBoy(Integer orderId, Long boyId) {
+    Optional<User> userOptional = userRepository.findById(boyId);
+    if (userOptional.isPresent()) {
+      Optional<Orders> orderOptional = ordersRepository.findById(orderId);
+      if (orderOptional.isPresent()) {
+        User parkingBoy = userOptional.get();
+        List<ParkingLot> parkingLots = parkingBoy.getParkingLotList();
+        if (parkingLots.stream().filter(parkingLot -> parkingLot.getSize() != 0).collect(Collectors.toList()).size() != 0) {
+          Orders order = orderOptional.get();
+          order.setUser(parkingBoy);
+          order.setOrderStatus(OrderStatusEnum.YES.getMessage());
+          return Order2OrderDTOConverter.convert(order);
+        }
+        throw new RuntimeException("该停车员管理的停车场全部停满，分配失败");
+      }
+    }
+    throw new RuntimeException("参数错误");
+  }
+
+  @Transactional(rollbackOn = RuntimeException.class)
+  public OrdersDTO finishParkOrder(Integer orderId, Long parkingLotId) {
+    //1. 停车场的容量减一
+    Optional<ParkingLot> parkingLogOptional = parkingLotRepository.findById(parkingLotId);
+    if (parkingLogOptional.isPresent()) {
+      ParkingLot parkingLot = parkingLogOptional.get();
+      if (parkingLot.getSize() > 1) {
+        parkingLot.setSize(parkingLot.getSize() - 1);
+        Optional<Orders> orderOptional = ordersRepository.findById(orderId);
+        if (orderOptional.isPresent()) {
+          Orders order = orderOptional.get();
+          //2. 设置订单的停车场
+          order.setParkingLot(parkingLot);
+          //3. 设置订单的状态
+          order.setOrderStatus(OrderStatusEnum.PARK_DONE.getMessage());
+          //4. 返回该订单DTO
+          return Order2OrderDTOConverter.convert(order);
+        }
+        throw new RuntimeException("没有该订单");
+      }
+      throw new RuntimeException("该停车场容量不足");
+    }
+    throw new RuntimeException("参数错误");
   }
 
   @Transactional
-  public void updateStatusById(int orderId, String status) {
-    ordersRepository.updateStatusById(orderId, status);
+  public OrdersDTO createUnParkOrders(String carId) {
+    if (StringUtils.isNotBlank(carId)) {
+      throw new RuntimeException("参数错误");
+    }
+    Optional<Orders> orderOptional = findOrderWhichCarInParkingLotByCarId(carId);
+    if (orderOptional.isPresent()) {
+      Orders parkOrder = orderOptional.get();
+      Orders unParkOrder = new Orders();
+      BeanUtils.copyProperties(unParkOrder, parkOrder);
+      unParkOrder.setOrderId(null);
+      unParkOrder.setOrderType(OrderTypeEnum.UNPARK.getMessage());
+      unParkOrder.setOrderStatus(OrderStatusEnum.YES.getMessage());
+      ordersRepository.save(unParkOrder);
+      return Order2OrderDTOConverter.convert(unParkOrder);
+    }
+    throw new RuntimeException("carId错误或者该车已不在停车场");
   }
 
   @Transactional
-  public void updateParkingLotIdById(int orderId, Long parkinglotId) {
-    ordersRepository.updateParkingLotIdById(orderId, parkinglotId);
+  public OrdersDTO finishUnParkOrder(String carId) {
+    if (StringUtils.isNotBlank(carId)) {
+      throw new RuntimeException("参数错误");
+    }
+
+    //1. 修改订单状态
+    Optional<Orders> orderOptional = findOrderWhichCarInParkingLotByCarId(carId);
+    if (orderOptional.isPresent()) {
+      Orders unParkOrder = orderOptional.get();
+      ParkingLot parkingLot = unParkOrder.getParkingLot();
+      //2. 停车场容量加1
+      parkingLot.setSize(parkingLot.getSize() + 1);
+      unParkOrder.setOrderStatus(OrderStatusEnum.UNPARK_DONE.getMessage());
+    }
+
+    throw new RuntimeException("carId错误或者该车已不在停车场");
   }
 }

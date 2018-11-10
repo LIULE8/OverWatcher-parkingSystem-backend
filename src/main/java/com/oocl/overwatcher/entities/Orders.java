@@ -28,14 +28,14 @@ public class Orders {
 
     private String carId;
 
-    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="user_id")
+    @JsonIgnore
     private User user;
 
-    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name="parkinglot_id")
+    @JsonIgnore
     private ParkingLot parkingLot;
 
     @CreatedDate
