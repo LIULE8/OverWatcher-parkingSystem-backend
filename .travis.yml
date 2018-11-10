@@ -1,0 +1,14 @@
+language: java
+jdk:
+  - oraclejdk8
+notifications:
+  email: false
+install:
+  - chmod +x ./gradlew
+  - ./gradlew --info assemble
+script: ./gradlew --info check
+
+deploy:
+ provider: heroku
+ api_key: 4cb60d36-426f-4609-a891-70f22d5b0343
+ app: over-back
