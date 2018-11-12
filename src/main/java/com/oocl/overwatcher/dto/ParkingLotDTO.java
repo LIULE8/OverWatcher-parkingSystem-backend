@@ -8,15 +8,33 @@ import lombok.Data;
 @Data
 public class ParkingLotDTO {
 
-    private Long parkingLotId;
+  /**
+   * 停车场id
+   */
+  private Long parkingLotId;
 
-    private String parkingLotName;
+  /**
+   * 停车员名字
+   */
+  private String parkingLotName;
 
-    private Integer size;
+  /**
+   * 停车场现容量
+   */
+  private Integer size;
 
-    private Integer initSize;
+  /**
+   * 停车场初始容量
+   */
+  private Integer initSize;
 
-    private String status;
+  /**
+   * 停车场状态
+   */
+  private String status;
 
-    private Long userId;
+  /**
+   * 用户id
+   */
+  private Long userId;
 }

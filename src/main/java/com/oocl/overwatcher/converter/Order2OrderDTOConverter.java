@@ -17,14 +17,11 @@ public class Order2OrderDTOConverter {
 
   public static OrderDTO convert(Orders order) {
     OrderDTO orderDTO = new OrderDTO();
-
     BeanUtils.copyProperties(order, orderDTO);
-
     orderDTO.setTime(order.getCreatedDate());
     orderDTO.setUsersId(order.getUser().getId());
-    String name = order.getParkingLot() != null ? order.getParkingLot().getName() : null;
+    String name = order.getParkingLot() != null ? order.getParkingLot().getParkingLotName() : null;
     orderDTO.setName(name);
-
     return orderDTO;
   }
 

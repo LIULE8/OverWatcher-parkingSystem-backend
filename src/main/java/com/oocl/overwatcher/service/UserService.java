@@ -1,19 +1,15 @@
 package com.oocl.overwatcher.service;
 
-import com.oocl.overwatcher.dto.EmployeeDto;
 import com.oocl.overwatcher.entities.ParkingLot;
 import com.oocl.overwatcher.entities.User;
 import com.oocl.overwatcher.repositories.ParkingLotRepository;
 import com.oocl.overwatcher.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import javax.transaction.Transactional;
 import java.time.ZonedDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;

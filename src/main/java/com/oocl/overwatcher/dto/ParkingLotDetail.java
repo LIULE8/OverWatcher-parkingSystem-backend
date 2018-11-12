@@ -1,53 +1,35 @@
 package com.oocl.overwatcher.dto;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 /**
  * @author LIULE9
  */
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class ParkingLotDetail {
 
+    /**
+     * 停车场名字
+     */
     private String parkingLotName;
+
+    /**
+     * 停车员名字
+     */
     private String parkingBoyName;
-    private int size;
-    private int initSize;
-    private Long userId;
 
-    public ParkingLotDetail(String parkingLotName, String parkingBoyName, int size, int initSize) {
-        this.parkingLotName = parkingLotName;
-        this.parkingBoyName = parkingBoyName;
-        this.size = size;
-        this.initSize = initSize;
 
-    }
+    /**
+     * 停车场现容量
+     */
+    private Integer size;
 
-    public int getSize() {
-        return size;
-    }
-
-    public void setSize(int size) {
-        this.size = size;
-    }
-
-    public int getInitSize() {
-        return initSize;
-    }
-
-    public void setInitSize(int initSize) {
-        this.initSize = initSize;
-    }
-
-    public String getParkingLotName() {
-        return parkingLotName;
-    }
-
-    public void setParkingLotName(String parkingLotName) {
-        this.parkingLotName = parkingLotName;
-    }
-
-    public String getParkingBoyName() {
-        return parkingBoyName;
-    }
-
-    public void setParkingBoyName(String parkingBoyName) {
-        this.parkingBoyName = parkingBoyName;
-    }
+    /**
+     * 停车场初始容量
+     */
+    private Integer initSize;
 }

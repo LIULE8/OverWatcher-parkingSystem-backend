@@ -3,6 +3,7 @@ package com.oocl.overwatcher.controller;
 import com.oocl.overwatcher.converter.Order2OrderDTOConverter;
 import com.oocl.overwatcher.dto.OrderDTO;
 import com.oocl.overwatcher.entities.Orders;
+import com.oocl.overwatcher.enums.OrderStatusEnum;
 import com.oocl.overwatcher.service.OrdersService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -230,7 +231,7 @@ public class OrdersController {
    */
   @GetMapping("/showHistoryOrders/{userId}")
   public ResponseEntity<List<Orders>> showHistoryOrders(@PathVariable("userId") Long userId) {
-    return ResponseEntity.ok(ordersService.showHistoryOrdersByUserId(userId, "取车完成"));
+    return ResponseEntity.ok(ordersService.showHistoryOrdersByUserId(userId, OrderStatusEnum.UNPARK_DONE.getMessage()));
   }
 
 }

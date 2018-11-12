@@ -1,6 +1,7 @@
 package com.oocl.overwatcher.controller;
 
 import com.oocl.overwatcher.converter.ParkingLot2ParkingLotDTOConverter;
+import com.oocl.overwatcher.converter.ParkingLot2ParkingLotDetail;
 import com.oocl.overwatcher.dto.ParkingLotDTO;
 import com.oocl.overwatcher.dto.ParkingLotDetail;
 import com.oocl.overwatcher.entities.ParkingLot;
@@ -15,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.validation.constraints.NotNull;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * @author LIULE9
@@ -46,6 +46,71 @@ public class ParkingLotController {
     List<ParkingLot> parkingLotList = parkingLotService.getAllParkingLotByPage(pageRequest).getContent();
     List<ParkingLotDTO> parkingLotDTOList = ParkingLot2ParkingLotDTOConverter.convert(parkingLotList);
     return ResponseEntity.ok(parkingLotDTOList);
+  }
+
+  /**
+   * 根据 parkingLotId 查询停车场信息
+   *
+   * @param parkingLotId
+   * @return
+   */
+  @GetMapping("/{id}")
+  public ResponseEntity<ParkingLot> findOne(@PathVariable("id") Long parkingLotId) {
+    try {
+      ParkingLot parkingLot = parkingLotService.findOne(parkingLotId).orElseThrow(() -> new Exception("没有该停车场"));
+      return ResponseEntity.ok(parkingLot);
+    } catch (Exception e) {
+      log.error("【根据 parkingLotId 查询停车场信息】, 没有找到该停车场, parkingLotId={}", parkingLotId);
+    }
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+  }
+
+  /**
+   * 统计所有停车场的具体信息
+   *
+   * @param pageSize
+   * @param curPage
+   * @return
+   */
+  @GetMapping("/statistical")
+  public ResponseEntity<List<ParkingLotDetail>> countAllParkingLotDetail(@RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
+                                                                         @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
+    PageRequest pageRequest = PageRequest.of(curPage, pageSize);
+
+    List<ParkingLot> parkingLots = parkingLotService.getAllParkingLotByPage(pageRequest).getContent();
+
+    List<ParkingLotDetail> collect = ParkingLot2ParkingLotDetail.convert(parkingLots);
+
+    return ResponseEntity.ok(collect);
+  }
+
+  /**
+   * 找到所有没有 owner 的停车场
+   *
+   * @return
+   */
+  @GetMapping("/nonOwner")
+  public ResponseEntity<List<ParkingLot>> findAllParkingLotNoOwner() {
+    return ResponseEntity.ok(parkingLotService.findAllParkingLotNoOwner());
+  }
+
+  /**
+   * 条件查询
+   *
+   * @param condition
+   * @param value
+   * @return
+   */
+  @GetMapping("/criteria")
+  public ResponseEntity<List<ParkingLotDTO>> findParkingByCondition(@RequestParam("condition") String condition,
+                                                                    @RequestParam("value") String value,
+                                                                    @RequestParam("pageSize") Integer pageSize,
+                                                                    @RequestParam("curPage") Integer curPage) {
+    PageRequest pageRequest = PageRequest.of(curPage, pageSize);
+
+    List<ParkingLot> parkingLots = parkingLotService.findByCondition(condition, value, pageRequest).getContent();
+
+    return ResponseEntity.ok(ParkingLot2ParkingLotDTOConverter.convert(parkingLots));
   }
 
   /**
@@ -91,7 +156,6 @@ public class ParkingLotController {
    */
   @PutMapping
   public ResponseEntity<Void> updateParkingLog(@NotNull @RequestBody ParkingLot parkingLot) {
-
     try {
       parkingLotService.updateParkingLog(parkingLot);
       return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
@@ -102,41 +166,4 @@ public class ParkingLotController {
     }
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
   }
-
-  @GetMapping("/statistical")
-  public ResponseEntity<List<ParkingLotDetail>> statisticalAllParkingLotDetail(@RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
-                                                                               @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
-    PageRequest pageRequest = PageRequest.of(curPage, pageSize);
-    List<ParkingLot> parkingLots = parkingLotService.getAllParkingLotByPage(pageRequest).getContent();
-    List<ParkingLotDetail> collect = parkingLots.stream().map(parkingLot ->
-        new ParkingLotDetail(parkingLot.getParkingLotName(),
-            parkingLot.getUser() == null ? "暂无" : parkingLot.getUser().getName(),
-            parkingLot.getSize(),
-            parkingLot.getInitSize()))
-        .collect(Collectors.toList());
-    return ResponseEntity.ok(collect);
-  }
-
-  @GetMapping("/{id}")
-  public ResponseEntity<ParkingLot> findOne(@PathVariable("id") Long id) {
-    try {
-      ParkingLot parkingLot = parkingLotService.findOne(id).orElseThrow(() -> new Exception("没有该停车场"));
-      return ResponseEntity.ok(parkingLot);
-    } catch (Exception e) {
-      e.printStackTrace();
-    }
-    return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-  }
-
-  @GetMapping("/nonOwner")
-  public List<ParkingLot> finAllParkingLotNoOwner() {
-    return parkingLotService.finAllParkingLotNoOwner();
-  }
-
-  @GetMapping("/condition")
-  public List<ParkingLotDTO> findParkingByCondition(String condition, String value) {
-    List<ParkingLot> parkingLots = parkingLotService.findByCondition(condition, value);
-    return ParkingLot2ParkingLotDTOConverter.convert(parkingLots);
-  }
-
 }

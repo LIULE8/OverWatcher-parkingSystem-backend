@@ -1,31 +1,32 @@
 package com.oocl.overwatcher.dto;
 
-import com.oocl.overwatcher.entities.Role;
-import com.oocl.overwatcher.entities.User;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
+/**
+ * @author LIULE9
+ */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class RoleDTO {
+
+    /**
+     * 角色id
+     */
     private Long id;
+
+    /**
+     * 角色名字
+     */
     private String name;
-    private List<EmployeeDto> employeeDto;
 
-    public Long getId() {
-        return id;
-    }
+    /**
+     * 角色管理的用户的DTO
+     */
+    private List<UserDTO> userDTOList;
 
-    public String getName() {
-        return name;
-    }
-
-    public List<EmployeeDto> getEmployeeDto() {
-        return employeeDto;
-    }
-
-    public RoleDTO(Role role) {
-        this.id = role.getId();
-        this.name = role.getName();
-        this.employeeDto = role.getUsers().stream().map(user -> new EmployeeDto(user)).collect(Collectors.toList());
-    }
 }

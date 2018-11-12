@@ -4,9 +4,10 @@ import com.oocl.overwatcher.entities.Role;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-
+/**
+ * @author LIULE9
+ */
 @Repository
 public interface RoleRepository extends JpaRepository<Role,Long> {
-    List<Role> findByName(String roleName);
+    Role findByName(String roleName);
 }

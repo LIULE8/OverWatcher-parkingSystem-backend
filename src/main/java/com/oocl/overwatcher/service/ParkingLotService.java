@@ -7,7 +7,6 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import javax.persistence.criteria.Predicate;
@@ -22,6 +21,11 @@ import java.util.stream.Collectors;
 @Service
 public class ParkingLotService {
 
+  private static final String CONDITION_NAME = "name";
+  private static final String CONDITION_SIZE_LESS = "size_less";
+  private static final String CONDITION_SIZE_MORE = "size_more";
+  private static final String CONDITION_STATUS = "status";
+
   private final ParkingLotRepository parkingLotRepository;
 
   @Autowired
@@ -29,65 +33,64 @@ public class ParkingLotService {
     this.parkingLotRepository = parkingLotRepository;
   }
 
-
   public Page<ParkingLot> getAllParkingLotByPage(Pageable pageable) {
     return parkingLotRepository.findAll(pageable);
   }
-
 
   public Optional<ParkingLot> findOne(Long id) {
     return parkingLotRepository.findById(id);
   }
 
+  public List<ParkingLot> findAllParkingLotNoOwner() {
+    return parkingLotRepository.findAll().stream().filter(parkingLot -> parkingLot.getUser() == null).collect(Collectors.toList());
+  }
+
+  public Page<ParkingLot> findByCondition(String condition, String value, Pageable pageable) {
+    return parkingLotRepository.findAll((root, query, criteriaBuilder) -> {
+      Predicate predicate = null;
+      if (StringUtils.isBlank(condition)) {
+        return predicate;
+      }
+      switch (condition) {
+        case CONDITION_NAME:
+          predicate = criteriaBuilder.like(root.get("name"), "%" + value + "%");
+          break;
+        case CONDITION_SIZE_LESS:
+          predicate = criteriaBuilder.lessThanOrEqualTo(root.get("size"), Integer.parseInt(value));
+          break;
+        case CONDITION_SIZE_MORE:
+          predicate = criteriaBuilder.greaterThanOrEqualTo(root.get("size"), Integer.parseInt(value));
+          break;
+        case CONDITION_STATUS:
+          predicate = criteriaBuilder.equal(root.get("status"), value);
+          break;
+        default:
+          break;
+      }
+      return predicate;
+    }, pageable);
+  }
 
   @Transactional
+
   public void save(ParkingLot parkingLot) {
     parkingLotRepository.save(parkingLot);
   }
 
   @Transactional
   public void updateStatus(ParkingLot parkingLot) {
-    Optional<ParkingLot> parkingLotOptional = parkingLotRepository.findById(parkingLot.getParkingLotId());
-    if (parkingLotOptional.isPresent()){
+    Optional<ParkingLot> parkingLotOptional = findOne(parkingLot.getParkingLotId());
+    if (parkingLotOptional.isPresent()) {
       ParkingLot dbParkingLot = parkingLotOptional.get();
       dbParkingLot.setStatus(parkingLot.getStatus());
     }
-    throw new RuntimeException("停车场id错误");
-  }
-
-
-  public List<ParkingLot> finAllParkingLotNoOwner() {
-    return parkingLotRepository.findAll().stream().filter(parkingLot -> parkingLot.getUser() == null).collect(Collectors.toList());
-  }
-
-  public List<ParkingLot> findByCondition(String condition, String value) {
-    return parkingLotRepository.findAll((Specification<ParkingLot>) (root, query, criteriaBuilder) -> {
-      Predicate predicate = null;
-      if (StringUtils.isNotBlank(condition) && "name".equals(condition)) {
-        predicate = criteriaBuilder.like(root.get("name").as(String.class), "%" + value + "%");
-      } else if (StringUtils.isNotBlank(condition) && "size-less".equals(condition)) {
-        try {
-          predicate = criteriaBuilder.lessThanOrEqualTo(root.get("size").as(Integer.class), Integer.parseInt(value));
-        } catch (NumberFormatException e) {
-          e.printStackTrace();
-        }
-      } else if (StringUtils.isNotBlank(condition) && "size-more".equals(condition)) {
-        try {
-          predicate = criteriaBuilder.greaterThanOrEqualTo(root.get("size").as(Integer.class), Integer.parseInt(value));
-        } catch (NumberFormatException e) {
-          e.printStackTrace();
-        }
-      } else if (StringUtils.isNotBlank(condition) && "status".equals(condition)) {
-        predicate = criteriaBuilder.equal(root.get("status").as(String.class), value);
-      }
-      return predicate;
-    });
+    throw new RuntimeException("停车场id存在或者id错误");
   }
 
   @Transactional
   public void updateParkingLog(ParkingLot parkingLot) {
     if (parkingLot.getParkingLotId() != null) {
-      Optional<ParkingLot> parkingLotOptional = parkingLotRepository.findById(parkingLot.getParkingLotId());
+      Optional<ParkingLot> parkingLotOptional = findOne(parkingLot.getParkingLotId());
       if (parkingLotOptional.isPresent()) {
         ParkingLot dbParkingLot = parkingLotOptional.get();
         BeanUtils.copyProperties(parkingLot, dbParkingLot);
