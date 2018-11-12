@@ -39,7 +39,7 @@ public class ParkingLot {
 
   @ManyToMany(fetch = FetchType.LAZY, mappedBy = "user")
   @JsonIgnore
-  private List<Orders> ordersList = new ArrayList<>();
+  private List<Order> orderList = new ArrayList<>();
 
   public ParkingLot(String parkingLotName, int size) {
     this.parkingLotName = parkingLotName;

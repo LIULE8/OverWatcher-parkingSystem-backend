@@ -1,167 +1,235 @@
 package com.oocl.overwatcher.service;
 
+import com.oocl.overwatcher.dto.ChangeParkingLotDTO;
 import com.oocl.overwatcher.entities.ParkingLot;
 import com.oocl.overwatcher.entities.User;
-import com.oocl.overwatcher.repositories.ParkingLotRepository;
+import com.oocl.overwatcher.enums.UserStatusEnum;
 import com.oocl.overwatcher.repositories.UserRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import javax.persistence.criteria.Predicate;
 import javax.transaction.Transactional;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
-import java.util.stream.Collectors;
 
+/**
+ * @author LIULE9
+ */
 @Service
-@Transactional
+@Slf4j
 public class UserService {
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private ParkingLotRepository parkingLotRepository;
 
-    public UserService(UserRepository repository) {
-        this.userRepository=repository;
-    }
-
-    public List<User> findAllUser(){
-        return userRepository.findAll();
-    }
-    public User findUserById(Long id){
-        return userRepository.findById(id).get();
-    }
-    public User findUserByParkingBoy(Long id){
-        return userRepository.findById(id).get();
-    }
-    public User  addUser(User user){
-        String randomUsername = getRandomString(3);
-        String randomPassword = getRandomString(3);
-        user.setUserName(randomUsername);
-        String encodePassword = new BCryptPasswordEncoder().encode(randomPassword);
-        user.setPassword(encodePassword);
-        user.setStatus("上班");
-        userRepository.save(user);
-        User user1 = new User();
-        user1.setUserName(randomUsername);
-        user1.setPassword(randomPassword);
-        return user1;
-
-    }
-    public void updateStatus(Long id) {
-        User user = userRepository.findById(id).get();
-        if(user.getStatus().equals("下班")||user.getStatus().equals("早退")){
-            if(ZonedDateTime.now().getHour()<10){
-                userRepository.updateStatusById(id,"上班");
-            }
-        }
-        else if (user.getStatus().equals("上班")){
-            if(ZonedDateTime.now().getHour()>10){
-                    userRepository.updateStatusById(id,"下班");
-            }else {
-                    userRepository.updateStatusById(id,"早退");
-            }
-        }else
-            {
-                userRepository.updateStatusById(id,user.getStatus());
-            }
-    }
-
-    public boolean updateAlive(User user) {
-        int updateNum = userRepository.updateAliveById(user.getId(),user.getAlive());
-        return updateNum!=0;
-    }
-    public Optional<User> findOne(Long id) {
-        return userRepository.findById(id);
-    }
-
-    public User updateBasicMessageOfEmployees(Long id,User user){
-        System.out.println("============== id ================");
-        System.out.println(id);
-        Optional<User> finder=userRepository.findById(id);
-        if (finder.isPresent()){
-            User old=finder.get();
-            old.setName(user.getName());
-            old.setEmail(user.getEmail());
-            old.setPhone(user.getPhone());
-            old.setUserName(user.getUserName());
-            old.setRoleList(user.getRoleList());
-            userRepository.save(old);
-            return old;
-        }else {
-            return null;
-        }
-
-    }
+  /**
+   * 限制分钟内不能连续打卡两次
+   */
+  private static final Integer LIMIT_MINUTE = 10;
+  /**
+   * 打卡条件是比较分钟数
+   */
+  private static final Integer CLOCK_OUT_LIMIT_CONDITION = 1000 * 60;
+  private static final Integer LIMIT_BEGIN_CLOCK_OUT = 0;
+  private static final Integer ON_DUTY_BEGIN_CLOCK_OUT = 7;
+  private static final Integer ON_DUTY_END_CLOCK_OUT = 10;
+  private static final Integer OFF_DUTY_BEGIN_CLOCK_OUT = 18;
+  private static final Integer OFF_DUTY_END_CLOCK_OUT = 25;
+  private static final String CONDITION_STATUS = "status";
+  private static final String CONDITION_NAME = "name";
+  private static final String CONDITION_EMAIL = "email";
+  private static final String CONDITION_PHONE = "phone";
 
 
-    public List<User> findByName(String name) {
-        return userRepository.findEmployeeByName(name);
+  private final UserRepository userRepository;
+
+  private final ParkingLotService parkingLotService;
+
+  @Autowired
+  public UserService(UserRepository userRepository, ParkingLotService parkingLotService) {
+    this.userRepository = userRepository;
+    this.parkingLotService = parkingLotService;
+  }
+
+  public Optional<User> findOne(Long id) {
+    return userRepository.findById(id);
+  }
+
+  public Page<User> findAllUserByPage(Pageable pageable) {
+    return userRepository.findAll(pageable);
+  }
+
+  public Page<User> findAllUsersByConditionAndPage(String condition, String value, Pageable pageable) {
+    return userRepository.findAll(((root, query, criteriaBuilder) -> {
+      Predicate predicate = null;
+      switch (condition) {
+        case CONDITION_STATUS:
+          predicate = criteriaBuilder.equal(root.get("status"), value);
+          break;
+        case CONDITION_NAME:
+          predicate = criteriaBuilder.equal(root.get("name"), "%" + value + "%");
+          break;
+        case CONDITION_EMAIL:
+          predicate = criteriaBuilder.equal(root.get("email"), "%" + value + "%");
+          break;
+        case CONDITION_PHONE:
+          predicate = criteriaBuilder.equal(root.get("phone"), "%" + value + "%");
+          break;
+        default:
+          break;
+      }
+      return predicate;
+    }), pageable);
+  }
+
+  @Transactional
+  public User addUser(User user) {
+    User result = new User();
+    user.setUserName(getRandomString(3));
+    user.setPassword(getRandomString(3));
+    log.info("===生成的用户名和密码===, username={}, password={}", user.getUserName(), user.getPassword());
+    BeanUtils.copyProperties(user, result);
+    String encodePassword = new BCryptPasswordEncoder().encode(user.getPassword());
+    user.setPassword(encodePassword);
+    user.setStatus(UserStatusEnum.ON_DUTY.getMessage());
+    userRepository.save(user);
+    return result;
+  }
+
+  @Transactional
+  public void aliveOrFreezeUser(Long userId) {
+    Optional<User> userOptional = findOne(userId);
+    if (userOptional.isPresent()) {
+      User user = userOptional.get();
+      user.setAlive(!user.getAlive());
+    }
+    throw new RuntimeException("参数错误");
+  }
+
+  @Transactional(rollbackOn = RuntimeException.class)
+  public List<ParkingLot> assignParkingLotNoOwner(ChangeParkingLotDTO changeParkingLotDTO) throws RuntimeException {
+    List<Long> parkingLotIdList = changeParkingLotDTO.getParkingLotId();
+    if (parkingLotIdList == null) {
+      throw new RuntimeException("为指定需要设置的停车场id");
+    }
+    for (Long id : parkingLotIdList) {
+      ParkingLot parkingLot = parkingLotService.findOne(id).orElseThrow(() -> new RuntimeException("未找到该停车场"));
+      parkingLot.setUser(null);
+    }
+    return parkingLotService.findAll();
+  }
+
+  @Transactional(rollbackOn = RuntimeException.class)
+  public List<ParkingLot> assignParkingLotToAnotherParkingBoy(ChangeParkingLotDTO changeParkingLotDTO) {
+    List<Long> parkingLotIdList = changeParkingLotDTO.getParkingLotId();
+    if (parkingLotIdList == null) {
+      throw new RuntimeException("为指定需要设置的停车场id");
     }
 
-    public List<ParkingLot> finAllParkingLotByEmployeeId(Long employeeId){
-       return userRepository.findById(employeeId).get().getParkingLotList();
+    for (Long id : parkingLotIdList) {
+      ParkingLot parkingLot = parkingLotService.findOne(id).orElseThrow(() -> new RuntimeException("未找到该停车场"));
+      User user = findOne(changeParkingLotDTO.getUserId()).orElseThrow(() -> new RuntimeException("未找到该用户"));
+      parkingLot.setUser(user);
+    }
+    return parkingLotService.findAll();
+  }
+
+  @Transactional
+  public void assignParkingLotToParkingBoy(Long parkingBoyId, Long parkingLotId) {
+    User parkingBoy = userRepository.findById(parkingBoyId).orElseThrow(() -> new RuntimeException("未找到该用户"));
+    ParkingLot parkingLot = parkingLotService.findOne(parkingLotId).orElseThrow(() -> new RuntimeException("未找到该停车场"));
+    if (parkingLot.getUser() == null) {
+      parkingLot.setUser(parkingBoy);
+      parkingBoy.getParkingLotList().add(parkingLot);
+      userRepository.save(parkingBoy);
+    }
+    throw new RuntimeException("该停车场已有人管理");
+  }
+
+  @Transactional
+  public User userClockOutWhenOnWorkOrAfterWork(Long id) {
+    DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    Optional<User> userOptional = findOne(id);
+    if (!userOptional.isPresent()) {
+      throw new RuntimeException("该用户不存在");
+    }
+    User user = userOptional.get();
+    Date curTime;
+    Date signTime;
+    ZonedDateTime now;
+
+    try {
+      now = ZonedDateTime.now();
+      curTime = sdf.parse(now.format(df));
+      signTime = sdf.parse(user.getSignTime().format(df));
+    } catch (ParseException e) {
+      throw new RuntimeException("时间转换出错, signTime=" + user.getSignTime());
     }
 
-    public List<User> findByEmail(String email) {
-        return userRepository.findEmployeeByEmail(email);
+    //频繁打卡问题：10分钟内不允许打卡两次
+    if ((curTime.getTime() - signTime.getTime()) / CLOCK_OUT_LIMIT_CONDITION < LIMIT_MINUTE) {
+      throw new RuntimeException("该员工频繁打卡");
     }
 
-    public List<User> findByPhone(String phone) {
-        return userRepository.findEmployeeByPhone(phone);
+    //非打卡时间打卡
+    if (now.getHour() > LIMIT_BEGIN_CLOCK_OUT && now.getHour() < ON_DUTY_BEGIN_CLOCK_OUT) {
+      throw new RuntimeException("非打卡时间打卡");
     }
 
-    public List<User> findAllEmployeesOnWork() {
-        List<User> userList= userRepository.findAllEmployeesOnWork().stream().filter(user -> (user.getRoleList().get(0).getName().equals("员工")&&user.getParkingLotList().size()!=0)
-        ).collect(Collectors.toList());
-       for (int i=0; i<userList.size();i++){
-           for (int j=0; j<userList.get(i).getParkingLotList().size();j++){
-               if (userList.get(i).getParkingLotList().get(j).getSize()<=0){
-                   userList.get(i).getParkingLotList().remove(userList.get(i).getParkingLotList().get(j));
-               }
-           }
-       }
-        return userList;
-    }
-    public boolean addParkingLotToParkingBoy(Long parkingBoyId,Long parkingLotId){
-        User parkingBoy = userRepository.findById(parkingBoyId).get();
-        ParkingLot parkingLot = parkingLotRepository.findById(parkingLotId).get();
-        if (parkingBoy!=null&&parkingLot!=null&&parkingLot.getUser()==null){
-            parkingLot.setUser(parkingBoy);
-            parkingBoy.getParkingLotList().add(parkingLot);
-            User saveParkingBoy = userRepository.save(parkingBoy);
-            return saveParkingBoy!=null;
-        }
-        return false;
-    }
-    public  String getRandomString(int length) { //length表示生成字符串的长度
-        String base = "abcdefghijklmnopqrstuvwxyz";
-        Random random = new Random();
-        StringBuffer sb = new StringBuffer();
-        for (int i = 0; i < length; i++) {
-            int number = random.nextInt(base.length());
-            sb.append(base.charAt(number));
-        }
-        return sb.toString();
+    //1. 上班
+    String userStatus = user.getStatus();
+    if (userStatus.equals(UserStatusEnum.OFF_DUTY.getMessage()) || userStatus.equals(UserStatusEnum.LEAVE_EARLY.getMessage())) {
+      String newStatus = now.getHour() < ON_DUTY_END_CLOCK_OUT ? UserStatusEnum.ON_DUTY.getMessage() : UserStatusEnum.LATE.getMessage();
+      user.setStatus(newStatus);
     }
 
-    public List<ParkingLot> changeParking(List<Long> pakingLotIds) {
-       for (Long id :pakingLotIds){
-           ParkingLot parkingLot = parkingLotRepository.findById(id).get();
-           parkingLot.setUser(null);
-           parkingLotRepository.save(parkingLot);
-       }
-        return parkingLotRepository.findAll();
+    //2. 下班
+    if (userStatus.equals(UserStatusEnum.ON_DUTY.getMessage()) || userStatus.equals(UserStatusEnum.LATE.getMessage())) {
+      String newStatus = now.getHour() < OFF_DUTY_END_CLOCK_OUT && now.getHour() > OFF_DUTY_BEGIN_CLOCK_OUT ? UserStatusEnum.OFF_DUTY.getMessage() : UserStatusEnum.LEAVE_EARLY.getMessage();
+      user.setStatus(newStatus);
     }
-    public List<ParkingLot> addParkingLotToPakingBoy(Long pakingBoyId,List<Long> pakingLotIds) {
-        for (Long id :pakingLotIds){
-        ParkingLot parkingLot = parkingLotRepository.findById(id).get();
-        User user = userRepository.findById(pakingBoyId).get();
-        parkingLot.setUser(user);
-        parkingLotRepository.save(parkingLot);
-        }
-        return parkingLotRepository.findAll();
+
+    user.setSignTime(now);
+    return user;
+  }
+
+  @Transactional
+  public User updateUser(Long userId, User user) {
+    User dbUser = findOne(userId).orElseThrow(() -> new RuntimeException("找不到该用户"));
+    dbUser.setName(user.getName());
+    dbUser.setEmail(user.getEmail());
+    dbUser.setPhone(user.getPhone());
+    dbUser.setUserName(user.getUserName());
+    dbUser.setRoleList(user.getRoleList());
+    return dbUser;
+  }
+
+  /**
+   * 随机生成长度为 length 的字符串
+   *
+   * @param length length表示生成字符串的长度
+   * @return
+   */
+  @SuppressWarnings("all")
+  private String getRandomString(int length) {
+    String base = "abcdefghijklmnopqrstuvwxyz";
+    Random random = new Random();
+    StringBuilder sb = new StringBuilder();
+    for (int i = 0; i < length; i++) {
+      int number = random.nextInt(base.length());
+      sb.append(base.charAt(number));
     }
+    return sb.toString();
+  }
+
 }

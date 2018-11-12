@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class RoleService {
 
-  private static final String CONDITION_PARKINGBOY = "员工";
   private final RoleRepository roleRepository;
 
   @Autowired
@@ -19,7 +18,7 @@ public class RoleService {
     this.roleRepository = roleRepository;
   }
 
-  public Role findRoleByName() {
-    return roleRepository.findByName(CONDITION_PARKINGBOY);
+  public Role findRoleByName(String roleName) {
+    return roleRepository.findByName(roleName);
   }
 }

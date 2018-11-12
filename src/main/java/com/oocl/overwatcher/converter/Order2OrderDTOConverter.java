@@ -1,7 +1,7 @@
 package com.oocl.overwatcher.converter;
 
 import com.oocl.overwatcher.dto.OrderDTO;
-import com.oocl.overwatcher.entities.Orders;
+import com.oocl.overwatcher.entities.Order;
 import org.springframework.beans.BeanUtils;
 
 import java.util.List;
@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
  */
 public class Order2OrderDTOConverter {
 
-  public static OrderDTO convert(Orders order) {
+  public static OrderDTO convert(Order order) {
     OrderDTO orderDTO = new OrderDTO();
     BeanUtils.copyProperties(order, orderDTO);
     orderDTO.setTime(order.getCreatedDate());
@@ -26,8 +26,8 @@ public class Order2OrderDTOConverter {
   }
 
 
-  public static List<OrderDTO> convert(List<Orders> ordersList){
-    return  ordersList.stream().map(Order2OrderDTOConverter::convert).collect(Collectors.toList());
+  public static List<OrderDTO> convert(List<Order> orderList){
+    return  orderList.stream().map(Order2OrderDTOConverter::convert).collect(Collectors.toList());
   }
 
 }

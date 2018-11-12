@@ -1,0 +1,8 @@
+server:
+  port: 9090
+
+spring:
+  jpa:
+    show-sql: true
+  jooq:
+    sql-dialect: h2

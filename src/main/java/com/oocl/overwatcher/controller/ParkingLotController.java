@@ -139,14 +139,19 @@ public class ParkingLotController {
    */
   @PutMapping("/status")
   public ResponseEntity<Void> updateParkingLotStatus(@RequestBody ParkingLot parkingLot) {
-    if (StringUtils.isNotBlank(parkingLot.getStatus()) && parkingLot.getParkingLotId() != null) {
-      parkingLotService.updateStatus(parkingLot);
-      return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    try {
+      if (StringUtils.isNotBlank(parkingLot.getStatus()) && parkingLot.getParkingLotId() != null) {
+        parkingLotService.updateStatus(parkingLot);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+      }
+    } catch (Exception e) {
+      log.error("【注销停车场】"
+          .concat(e.getMessage())
+          .concat(", parkingLot={}"), parkingLot);
     }
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
   }
 
-//  指定某个停车场给另一个停车员assignParkingLotToAnotherParkingBoy
 
   /**
    * 修改停车场的信息
@@ -157,8 +162,10 @@ public class ParkingLotController {
   @PutMapping
   public ResponseEntity<Void> updateParkingLog(@NotNull @RequestBody ParkingLot parkingLot) {
     try {
-      parkingLotService.updateParkingLog(parkingLot);
-      return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+      if (parkingLot.getParkingLotId() != null) {
+        parkingLotService.updateParkingLog(parkingLot);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+      }
     } catch (Exception e) {
       log.error("【修改停车场的信息】"
           .concat(e.getMessage())

@@ -2,7 +2,7 @@ package com.oocl.overwatcher.service;
 
 import com.oocl.overwatcher.converter.Order2OrderDTOConverter;
 import com.oocl.overwatcher.dto.OrderDTO;
-import com.oocl.overwatcher.entities.Orders;
+import com.oocl.overwatcher.entities.Order;
 import com.oocl.overwatcher.entities.ParkingLot;
 import com.oocl.overwatcher.entities.User;
 import com.oocl.overwatcher.enums.OrderStatusEnum;
@@ -43,30 +43,30 @@ public class OrdersService {
     this.parkingLotRepository = parkingLotRepository;
   }
 
-  public Optional<Orders> findOrderByOrderId(Integer orderId) {
+  public Optional<Order> findOrderByOrderId(Integer orderId) {
     return ordersRepository.findById(orderId);
   }
 
-  public Optional<Orders> findOrderWhichCarInParkingLotByCarId(String carId) {
+  public Optional<Order> findOrderWhichCarInParkingLotByCarId(String carId) {
     return ordersRepository.findByCarIdAndOrderStatusNot(carId, "取车成功");
   }
 
   public boolean isExistInParkingLotCarId(String carId) {
-    Optional<Orders> orderOptional = findOrderWhichCarInParkingLotByCarId(carId);
+    Optional<Order> orderOptional = findOrderWhichCarInParkingLotByCarId(carId);
     return orderOptional.isPresent();
   }
 
-  public List<Orders> findAllOrderWhichCarIdIs(String carId) {
+  public List<Order> findAllOrderWhichCarIdIs(String carId) {
     return ordersRepository.findByCarId(carId);
   }
 
-  public List<Orders> findAfterOrder(Long boyId) {
+  public List<Order> findAfterOrder(Long boyId) {
     User parkingBoy = new User();
     parkingBoy.setId(boyId);
     return ordersRepository.findByUserAndOrderStatus(parkingBoy, "存取中");
   }
 
-  public List<Orders> findByCondition(String condition, String value, Pageable pageable) {
+  public List<Order> findByCondition(String condition, String value, Pageable pageable) {
     return ordersRepository.findAll((root, query, criteriaBuilder) -> {
       Predicate predicate = null;
       if ("type".equals(condition)) {
@@ -78,19 +78,19 @@ public class OrdersService {
     }, pageable).getContent();
   }
 
-  public List<Orders> showHistoryOrdersByUserId(Long userId, String status) {
+  public List<Order> showHistoryOrdersByUserId(Long userId, String status) {
     User parkingBoy = new User();
     parkingBoy.setId(userId);
     return ordersRepository.findByUserAndOrderStatus(parkingBoy, status);
   }
 
-  public Page<Orders> getOrders(PageRequest pageRequest) {
+  public Page<Order> getOrders(PageRequest pageRequest) {
     return ordersRepository.findAll(pageRequest);
   }
 
   @Transactional
-  public List<Orders> addOrders(Orders orders) {
-    ordersRepository.save(orders);
+  public List<Order> addOrders(Order order) {
+    ordersRepository.save(order);
     return ordersRepository.findAll();
   }
 
@@ -98,12 +98,12 @@ public class OrdersService {
   public OrderDTO assignOrderToParkingBoy(Integer orderId, Long boyId) {
     Optional<User> userOptional = userRepository.findById(boyId);
     if (userOptional.isPresent()) {
-      Optional<Orders> orderOptional = ordersRepository.findById(orderId);
+      Optional<Order> orderOptional = ordersRepository.findById(orderId);
       if (orderOptional.isPresent()) {
         User parkingBoy = userOptional.get();
         List<ParkingLot> parkingLots = parkingBoy.getParkingLotList();
         if (parkingLots.stream().filter(parkingLot -> parkingLot.getSize() != 0).collect(Collectors.toList()).size() != 0) {
-          Orders order = orderOptional.get();
+          Order order = orderOptional.get();
           order.setUser(parkingBoy);
           order.setOrderStatus(OrderStatusEnum.YES.getMessage());
           return Order2OrderDTOConverter.convert(order);
@@ -122,9 +122,9 @@ public class OrdersService {
       ParkingLot parkingLot = parkingLogOptional.get();
       if (parkingLot.getSize() > 1) {
         parkingLot.setSize(parkingLot.getSize() - 1);
-        Optional<Orders> orderOptional = ordersRepository.findById(orderId);
+        Optional<Order> orderOptional = ordersRepository.findById(orderId);
         if (orderOptional.isPresent()) {
-          Orders order = orderOptional.get();
+          Order order = orderOptional.get();
           //2. 设置订单的停车场
           order.setParkingLot(parkingLot);
           //3. 设置订单的状态
@@ -144,10 +144,10 @@ public class OrdersService {
     if (StringUtils.isNotBlank(carId)) {
       throw new RuntimeException("参数错误");
     }
-    Optional<Orders> orderOptional = findOrderWhichCarInParkingLotByCarId(carId);
+    Optional<Order> orderOptional = findOrderWhichCarInParkingLotByCarId(carId);
     if (orderOptional.isPresent()) {
-      Orders parkOrder = orderOptional.get();
-      Orders unParkOrder = new Orders();
+      Order parkOrder = orderOptional.get();
+      Order unParkOrder = new Order();
       BeanUtils.copyProperties(unParkOrder, parkOrder);
       unParkOrder.setOrderId(null);
       unParkOrder.setOrderType(OrderTypeEnum.UNPARK.getMessage());
@@ -165,9 +165,9 @@ public class OrdersService {
     }
 
     //1. 修改订单状态
-    Optional<Orders> orderOptional = findOrderWhichCarInParkingLotByCarId(carId);
+    Optional<Order> orderOptional = findOrderWhichCarInParkingLotByCarId(carId);
     if (orderOptional.isPresent()) {
-      Orders unParkOrder = orderOptional.get();
+      Order unParkOrder = orderOptional.get();
       ParkingLot parkingLot = unParkOrder.getParkingLot();
       //2. 停车场容量加1
       parkingLot.setSize(parkingLot.getSize() + 1);

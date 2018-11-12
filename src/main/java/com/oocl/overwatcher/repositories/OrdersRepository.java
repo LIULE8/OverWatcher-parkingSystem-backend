@@ -1,6 +1,6 @@
 package com.oocl.overwatcher.repositories;
 
-import com.oocl.overwatcher.entities.Orders;
+import com.oocl.overwatcher.entities.Order;
 import com.oocl.overwatcher.entities.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -14,7 +14,7 @@ import java.util.Optional;
  */
 
 @Repository
-public interface OrdersRepository extends JpaRepository<Orders, Integer>, JpaSpecificationExecutor<Orders> {
+public interface OrdersRepository extends JpaRepository<Order, Integer>, JpaSpecificationExecutor<Order> {
 
   /**
    * 根据车牌号查找订单，并且该订单状态不等于参数的订单状态
@@ -22,14 +22,14 @@ public interface OrdersRepository extends JpaRepository<Orders, Integer>, JpaSpe
    * @param orderStatus
    * @return
    */
-  Optional<Orders> findByCarIdAndOrderStatusNot(String carId, String orderStatus);
+  Optional<Order> findByCarIdAndOrderStatusNot(String carId, String orderStatus);
 
   /**
    * 根据车牌号查找订单
    * @param carId
    * @return
    */
-  List<Orders> findByCarId(String carId);
+  List<Order> findByCarId(String carId);
 
 
   /**
@@ -38,5 +38,5 @@ public interface OrdersRepository extends JpaRepository<Orders, Integer>, JpaSpe
    * @param status
    * @return
    */
-  List<Orders> findByUserAndOrderStatus(User user, String status);
+  List<Order> findByUserAndOrderStatus(User user, String status);
 }

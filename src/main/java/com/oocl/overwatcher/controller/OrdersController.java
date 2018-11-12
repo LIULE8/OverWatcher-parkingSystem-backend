@@ -2,7 +2,7 @@ package com.oocl.overwatcher.controller;
 
 import com.oocl.overwatcher.converter.Order2OrderDTOConverter;
 import com.oocl.overwatcher.dto.OrderDTO;
-import com.oocl.overwatcher.entities.Orders;
+import com.oocl.overwatcher.entities.Order;
 import com.oocl.overwatcher.enums.OrderStatusEnum;
 import com.oocl.overwatcher.service.OrdersService;
 import lombok.extern.slf4j.Slf4j;
@@ -40,8 +40,8 @@ public class OrdersController {
    * @return
    */
   @GetMapping
-  public ResponseEntity<List<Orders>> getOrdersByPage(@RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
-                                                      @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
+  public ResponseEntity<List<Order>> getOrdersByPage(@RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
+                                                     @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
     PageRequest pageRequest = PageRequest.of(curPage, pageSize);
     return ResponseEntity.ok(ordersService.getOrders(pageRequest).getContent());
   }
@@ -53,8 +53,8 @@ public class OrdersController {
    * @return
    */
   @GetMapping("{orderId}")
-  public ResponseEntity<Orders> getOrdersByOrderId(@PathVariable("orderId") Integer orderId) {
-    Optional<Orders> orderOptional = ordersService.findOrderByOrderId(orderId);
+  public ResponseEntity<Order> getOrdersByOrderId(@PathVariable("orderId") Integer orderId) {
+    Optional<Order> orderOptional = ordersService.findOrderByOrderId(orderId);
     if (orderOptional.isPresent()) {
       return ResponseEntity.ok(orderOptional.get());
     }
@@ -70,7 +70,7 @@ public class OrdersController {
    * @return
    */
   @GetMapping("carId")
-  public ResponseEntity<List<Orders>> findAllOrderWhichCarIdIs(@RequestParam("carId") String carId) {
+  public ResponseEntity<List<Order>> findAllOrderWhichCarIdIs(@RequestParam("carId") String carId) {
     if (StringUtils.isNotBlank(carId)) {
       return ResponseEntity.ok(ordersService.findAllOrderWhichCarIdIs(carId));
     }
@@ -86,9 +86,9 @@ public class OrdersController {
    * @return
    */
   @GetMapping("carId/{carId}")
-  public ResponseEntity<Orders> findOrderWhichCarInParkingLotByCarId(@PathVariable("carId") String carId) {
+  public ResponseEntity<Order> findOrderWhichCarInParkingLotByCarId(@PathVariable("carId") String carId) {
     if (StringUtils.isNotBlank(carId)) {
-      Optional<Orders> orderOptional = ordersService.findOrderWhichCarInParkingLotByCarId(carId);
+      Optional<Order> orderOptional = ordersService.findOrderWhichCarInParkingLotByCarId(carId);
       if (orderOptional.isPresent()) {
         return ResponseEntity.ok(orderOptional.get());
       }
@@ -107,10 +107,10 @@ public class OrdersController {
    * @return
    */
   @GetMapping("criteria")
-  public ResponseEntity<List<Orders>> findAllOrdersByConditionAndPage(@RequestParam("condition") String condition,
-                                                                      @RequestParam("value") String value,
-                                                                      @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
-                                                                      @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
+  public ResponseEntity<List<Order>> findAllOrdersByConditionAndPage(@RequestParam("condition") String condition,
+                                                                     @RequestParam("value") String value,
+                                                                     @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
+                                                                     @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
     if (StringUtils.isNotBlank(condition) && StringUtils.isNotBlank(value)) {
       return ResponseEntity.ok(ordersService.findByCondition(condition, value, PageRequest.of(curPage, pageSize)));
     }
@@ -133,15 +133,15 @@ public class OrdersController {
   /**
    * 创建停车订单
    *
-   * @param orders
+   * @param order
    * @return
    */
   @PostMapping
-  public ResponseEntity<List<Orders>> createParkOrder(@RequestBody Orders orders) {
-    if (StringUtils.isNotBlank(orders.getCarId()) && !ordersService.isExistInParkingLotCarId(orders.getCarId())) {
-      return ResponseEntity.ok(ordersService.addOrders(orders));
+  public ResponseEntity<List<Order>> createParkOrder(@RequestBody Order order) {
+    if (StringUtils.isNotBlank(order.getCarId()) && !ordersService.isExistInParkingLotCarId(order.getCarId())) {
+      return ResponseEntity.ok(ordersService.addOrders(order));
     }
-    log.error("【创建停车订单】 carId错误或者car已经存在停车场 , orders={}", orders);
+    log.error("【创建停车订单】 carId错误或者car已经存在停车场 , order={}", order);
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
   }
 
@@ -230,7 +230,7 @@ public class OrdersController {
    * @return
    */
   @GetMapping("/showHistoryOrders/{userId}")
-  public ResponseEntity<List<Orders>> showHistoryOrders(@PathVariable("userId") Long userId) {
+  public ResponseEntity<List<Order>> showHistoryOrders(@PathVariable("userId") Long userId) {
     return ResponseEntity.ok(ordersService.showHistoryOrdersByUserId(userId, OrderStatusEnum.UNPARK_DONE.getMessage()));
   }
 

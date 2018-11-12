@@ -12,23 +12,28 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum OrderStatusEnum {
+
   /**
    * 存取中
    */
   YES(0, "存取中"),
+
   /**
    * 无人处理
    */
   NO(0, "无人处理"),
+
   /**
    * 停车完成
    */
   PARK_DONE(2, "停车完成"),
+
   /**
    * 取车完成
    */
   UNPARK_DONE(3, "取车完成");
 
   private Integer code;
+
   private String message;
 }

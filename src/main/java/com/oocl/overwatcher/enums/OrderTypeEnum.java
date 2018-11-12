@@ -12,6 +12,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum OrderTypeEnum {
+
   /**
    * 停车
    */
@@ -23,6 +24,7 @@ public enum OrderTypeEnum {
   UNPARK(1, "取车");
 
   private Integer code;
+
   private String message;
 
 }

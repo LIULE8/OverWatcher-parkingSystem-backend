@@ -41,6 +41,10 @@ public class ParkingLotService {
     return parkingLotRepository.findById(id);
   }
 
+  List<ParkingLot> findAll() {
+    return parkingLotRepository.findAll();
+  }
+
   public List<ParkingLot> findAllParkingLotNoOwner() {
     return parkingLotRepository.findAll().stream().filter(parkingLot -> parkingLot.getUser() == null).collect(Collectors.toList());
   }
@@ -72,30 +76,20 @@ public class ParkingLotService {
   }
 
   @Transactional
-
   public void save(ParkingLot parkingLot) {
     parkingLotRepository.save(parkingLot);
   }
 
   @Transactional
   public void updateStatus(ParkingLot parkingLot) {
-    Optional<ParkingLot> parkingLotOptional = findOne(parkingLot.getParkingLotId());
-    if (parkingLotOptional.isPresent()) {
-      ParkingLot dbParkingLot = parkingLotOptional.get();
-      dbParkingLot.setStatus(parkingLot.getStatus());
-    }
-    throw new RuntimeException("停车场id存在或者id错误");
+    ParkingLot dbParkingLot = findOne(parkingLot.getParkingLotId()).orElseThrow(() -> new RuntimeException("停车场id存在或者id错误"));
+    dbParkingLot.setStatus(parkingLot.getStatus());
   }
 
   @Transactional
   public void updateParkingLog(ParkingLot parkingLot) {
-    if (parkingLot.getParkingLotId() != null) {
-      Optional<ParkingLot> parkingLotOptional = findOne(parkingLot.getParkingLotId());
-      if (parkingLotOptional.isPresent()) {
-        ParkingLot dbParkingLot = parkingLotOptional.get();
-        BeanUtils.copyProperties(parkingLot, dbParkingLot);
-      }
-    }
-    throw new RuntimeException("参数错误");
+    ParkingLot dbParkingLot = findOne(parkingLot.getParkingLotId()).orElseThrow(() -> new RuntimeException("参数错误"));
+    BeanUtils.copyProperties(parkingLot, dbParkingLot);
   }
+
 }
