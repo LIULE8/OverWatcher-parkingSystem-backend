@@ -43,7 +43,7 @@ public class ParkingLotController {
   public ResponseEntity<List<ParkingLotDTO>> getAllParkingLotByPage(@RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
                                                                     @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
     PageRequest pageRequest = PageRequest.of(curPage, pageSize);
-    List<ParkingLot> parkingLotList = parkingLotServiceImpl.getAllParkingLotByPage(pageRequest).getContent();
+    List<ParkingLot> parkingLotList = parkingLotServiceImpl.findAllParkingLotByPage(pageRequest).getContent();
     List<ParkingLotDTO> parkingLotDTOList = ParkingLot2ParkingLotDTOConverter.convert(parkingLotList);
     return ResponseEntity.ok(parkingLotDTOList);
   }
@@ -77,7 +77,7 @@ public class ParkingLotController {
                                                                          @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
     PageRequest pageRequest = PageRequest.of(curPage, pageSize);
 
-    List<ParkingLot> parkingLots = parkingLotServiceImpl.getAllParkingLotByPage(pageRequest).getContent();
+    List<ParkingLot> parkingLots = parkingLotServiceImpl.findAllParkingLotByPage(pageRequest).getContent();
 
     List<ParkingLotDetail> collect = ParkingLot2ParkingLotDetail.convert(parkingLots);
 
@@ -132,16 +132,16 @@ public class ParkingLotController {
   }
 
   /**
-   * 注销停车场
+   * 启用或者注销停车场
    *
    * @param parkingLot
    * @return
    */
   @PutMapping("/status")
-  public ResponseEntity<Void> updateParkingLotStatus(@RequestBody ParkingLot parkingLot) {
+  public ResponseEntity<Void> openOrCloseParkingLot(@RequestBody ParkingLot parkingLot) {
     try {
       if (StringUtils.isNotBlank(parkingLot.getStatus()) && parkingLot.getParkingLotId() != null) {
-        parkingLotServiceImpl.updateStatus(parkingLot);
+        parkingLotServiceImpl.openOrCloseParkingLot(parkingLot);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
       }
     } catch (Exception e) {

@@ -2,6 +2,7 @@ package com.oocl.overwatcher.service.impl;
 
 import com.oocl.overwatcher.entities.ParkingLot;
 import com.oocl.overwatcher.repositories.ParkingLotRepository;
+import com.oocl.overwatcher.service.ParkingLotService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +20,7 @@ import java.util.stream.Collectors;
  * @author LIULE9
  */
 @Service
-public class ParkingLotServiceImpl {
+public class ParkingLotServiceImpl implements ParkingLotService {
 
   private static final String CONDITION_NAME = "name";
   private static final String CONDITION_SIZE_LESS = "size_less";
@@ -33,22 +34,27 @@ public class ParkingLotServiceImpl {
     this.parkingLotRepository = parkingLotRepository;
   }
 
-  public Page<ParkingLot> getAllParkingLotByPage(Pageable pageable) {
+  @Override
+  public Page<ParkingLot> findAllParkingLotByPage(Pageable pageable) {
     return parkingLotRepository.findAll(pageable);
   }
 
+  @Override
   public Optional<ParkingLot> findOne(Long id) {
     return parkingLotRepository.findById(id);
   }
 
-  List<ParkingLot> findAll() {
+  @Override
+  public List<ParkingLot> findAll() {
     return parkingLotRepository.findAll();
   }
 
+  @Override
   public List<ParkingLot> findAllParkingLotNoOwner() {
     return parkingLotRepository.findAll().stream().filter(parkingLot -> parkingLot.getUser() == null).collect(Collectors.toList());
   }
 
+  @Override
   public Page<ParkingLot> findByCondition(String condition, String value, Pageable pageable) {
     return parkingLotRepository.findAll((root, query, criteriaBuilder) -> {
       Predicate predicate = null;
@@ -75,17 +81,20 @@ public class ParkingLotServiceImpl {
     }, pageable);
   }
 
+  @Override
   @Transactional
   public void save(ParkingLot parkingLot) {
     parkingLotRepository.save(parkingLot);
   }
 
+  @Override
   @Transactional
-  public void updateStatus(ParkingLot parkingLot) {
+  public void openOrCloseParkingLot(ParkingLot parkingLot) {
     ParkingLot dbParkingLot = findOne(parkingLot.getParkingLotId()).orElseThrow(() -> new RuntimeException("停车场id存在或者id错误"));
     dbParkingLot.setStatus(parkingLot.getStatus());
   }
 
+  @Override
   @Transactional
   public void updateParkingLog(ParkingLot parkingLot) {
     ParkingLot dbParkingLot = findOne(parkingLot.getParkingLotId()).orElseThrow(() -> new RuntimeException("参数错误"));
