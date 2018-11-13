@@ -1,4 +1,4 @@
-package com.oocl.overwatcher.service;
+package com.oocl.overwatcher.service.impl;
 
 import com.oocl.overwatcher.converter.Order2OrderDTOConverter;
 import com.oocl.overwatcher.dto.OrderDTO;
@@ -10,6 +10,7 @@ import com.oocl.overwatcher.enums.OrderTypeEnum;
 import com.oocl.overwatcher.repositories.OrdersRepository;
 import com.oocl.overwatcher.repositories.ParkingLotRepository;
 import com.oocl.overwatcher.repositories.UserRepository;
+import com.oocl.overwatcher.service.OrderService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,7 +29,7 @@ import java.util.stream.Collectors;
  * @author LIULE9
  */
 @Service
-public class OrdersService {
+public class OrderServiceImpl implements OrderService {
 
   private final OrdersRepository ordersRepository;
 
@@ -37,36 +38,42 @@ public class OrdersService {
   private final ParkingLotRepository parkingLotRepository;
 
   @Autowired
-  public OrdersService(OrdersRepository ordersRepository, UserRepository userRepository, ParkingLotRepository parkingLotRepository) {
+  public OrderServiceImpl(OrdersRepository ordersRepository, UserRepository userRepository, ParkingLotRepository parkingLotRepository) {
     this.ordersRepository = ordersRepository;
     this.userRepository = userRepository;
     this.parkingLotRepository = parkingLotRepository;
   }
 
+  @Override
   public Optional<Order> findOrderByOrderId(Integer orderId) {
     return ordersRepository.findById(orderId);
   }
 
+  @Override
   public Optional<Order> findOrderWhichCarInParkingLotByCarId(String carId) {
-    return ordersRepository.findByCarIdAndOrderStatusNot(carId, "取车成功");
+    return ordersRepository.findByCarIdAndOrderStatusNot(carId, OrderStatusEnum.UNPARK_DONE.getMessage());
   }
 
+  @Override
   public boolean isExistInParkingLotCarId(String carId) {
     Optional<Order> orderOptional = findOrderWhichCarInParkingLotByCarId(carId);
     return orderOptional.isPresent();
   }
 
+  @Override
   public List<Order> findAllOrderWhichCarIdIs(String carId) {
     return ordersRepository.findByCarId(carId);
   }
 
+  @Override
   public List<Order> findAfterOrder(Long boyId) {
     User parkingBoy = new User();
     parkingBoy.setId(boyId);
-    return ordersRepository.findByUserAndOrderStatus(parkingBoy, "存取中");
+    return ordersRepository.findByUserAndOrderStatus(parkingBoy, OrderStatusEnum.YES.getMessage());
   }
 
-  public List<Order> findByCondition(String condition, String value, Pageable pageable) {
+  @Override
+  public Page<Order> findByCondition(String condition, String value, Pageable pageable) {
     return ordersRepository.findAll((root, query, criteriaBuilder) -> {
       Predicate predicate = null;
       if ("type".equals(condition)) {
@@ -75,25 +82,30 @@ public class OrdersService {
         predicate = criteriaBuilder.equal(root.get("status"), value);
       }
       return predicate;
-    }, pageable).getContent();
+    }, pageable);
   }
 
+  @Override
   public List<Order> showHistoryOrdersByUserId(Long userId, String status) {
     User parkingBoy = new User();
     parkingBoy.setId(userId);
     return ordersRepository.findByUserAndOrderStatus(parkingBoy, status);
   }
 
-  public Page<Order> getOrders(PageRequest pageRequest) {
+  @Override
+  public Page<Order> findAllOrdersByPage(PageRequest pageRequest) {
     return ordersRepository.findAll(pageRequest);
   }
 
+
+  @Override
   @Transactional
-  public List<Order> addOrders(Order order) {
+  public List<Order> createParkOrders(Order order) {
     ordersRepository.save(order);
     return ordersRepository.findAll();
   }
 
+  @Override
   @Transactional
   public OrderDTO assignOrderToParkingBoy(Integer orderId, Long boyId) {
     Optional<User> userOptional = userRepository.findById(boyId);
@@ -114,6 +126,7 @@ public class OrdersService {
     throw new RuntimeException("参数错误");
   }
 
+  @Override
   @Transactional(rollbackOn = RuntimeException.class)
   public OrderDTO finishParkOrder(Integer orderId, Long parkingLotId) {
     //1. 停车场的容量减一
@@ -139,6 +152,7 @@ public class OrdersService {
     throw new RuntimeException("参数错误");
   }
 
+  @Override
   @Transactional
   public OrderDTO createUnParkOrders(String carId) {
     if (StringUtils.isNotBlank(carId)) {
@@ -158,6 +172,7 @@ public class OrdersService {
     throw new RuntimeException("carId错误或者该车已不在停车场");
   }
 
+  @Override
   @Transactional
   public OrderDTO finishUnParkOrder(String carId) {
     if (StringUtils.isNotBlank(carId)) {

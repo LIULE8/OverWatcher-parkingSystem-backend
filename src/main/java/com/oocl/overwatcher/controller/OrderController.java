@@ -4,7 +4,7 @@ import com.oocl.overwatcher.converter.Order2OrderDTOConverter;
 import com.oocl.overwatcher.dto.OrderDTO;
 import com.oocl.overwatcher.entities.Order;
 import com.oocl.overwatcher.enums.OrderStatusEnum;
-import com.oocl.overwatcher.service.OrdersService;
+import com.oocl.overwatcher.service.impl.OrderServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,14 +22,14 @@ import java.util.Optional;
 @RestController
 @RequestMapping("orders")
 @Slf4j
-public class OrdersController {
+public class OrderController {
 
-  private final OrdersService ordersService;
+  private final OrderServiceImpl orderServiceImpl;
 
 
   @Autowired
-  public OrdersController(OrdersService ordersService) {
-    this.ordersService = ordersService;
+  public OrderController(OrderServiceImpl orderServiceImpl) {
+    this.orderServiceImpl = orderServiceImpl;
   }
 
   /**
@@ -43,7 +43,7 @@ public class OrdersController {
   public ResponseEntity<List<Order>> getOrdersByPage(@RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
                                                      @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
     PageRequest pageRequest = PageRequest.of(curPage, pageSize);
-    return ResponseEntity.ok(ordersService.getOrders(pageRequest).getContent());
+    return ResponseEntity.ok(orderServiceImpl.findAllOrdersByPage(pageRequest).getContent());
   }
 
   /**
@@ -54,7 +54,7 @@ public class OrdersController {
    */
   @GetMapping("{orderId}")
   public ResponseEntity<Order> getOrdersByOrderId(@PathVariable("orderId") Integer orderId) {
-    Optional<Order> orderOptional = ordersService.findOrderByOrderId(orderId);
+    Optional<Order> orderOptional = orderServiceImpl.findOrderByOrderId(orderId);
     if (orderOptional.isPresent()) {
       return ResponseEntity.ok(orderOptional.get());
     }
@@ -72,7 +72,7 @@ public class OrdersController {
   @GetMapping("carId")
   public ResponseEntity<List<Order>> findAllOrderWhichCarIdIs(@RequestParam("carId") String carId) {
     if (StringUtils.isNotBlank(carId)) {
-      return ResponseEntity.ok(ordersService.findAllOrderWhichCarIdIs(carId));
+      return ResponseEntity.ok(orderServiceImpl.findAllOrderWhichCarIdIs(carId));
     }
     log.error("【根据车牌carId查询该车牌的所有订单】 carId 错误, carId={}", carId);
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
@@ -88,7 +88,7 @@ public class OrdersController {
   @GetMapping("carId/{carId}")
   public ResponseEntity<Order> findOrderWhichCarInParkingLotByCarId(@PathVariable("carId") String carId) {
     if (StringUtils.isNotBlank(carId)) {
-      Optional<Order> orderOptional = ordersService.findOrderWhichCarInParkingLotByCarId(carId);
+      Optional<Order> orderOptional = orderServiceImpl.findOrderWhichCarInParkingLotByCarId(carId);
       if (orderOptional.isPresent()) {
         return ResponseEntity.ok(orderOptional.get());
       }
@@ -112,7 +112,7 @@ public class OrdersController {
                                                                      @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
                                                                      @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
     if (StringUtils.isNotBlank(condition) && StringUtils.isNotBlank(value)) {
-      return ResponseEntity.ok(ordersService.findByCondition(condition, value, PageRequest.of(curPage, pageSize)));
+      return ResponseEntity.ok(orderServiceImpl.findByCondition(condition, value, PageRequest.of(curPage, pageSize)).getContent());
     }
     log.error("【条件查询】参数错误, condition={}, value={}", condition, value);
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
@@ -126,7 +126,7 @@ public class OrdersController {
    */
   @GetMapping("after/{boyId}")
   public ResponseEntity<List<OrderDTO>> findAfterOrder(@PathVariable("boyId") Long boyId) {
-    return ResponseEntity.ok(Order2OrderDTOConverter.convert(ordersService.findAfterOrder(boyId)));
+    return ResponseEntity.ok(Order2OrderDTOConverter.convert(orderServiceImpl.findAfterOrder(boyId)));
   }
 
 
@@ -138,8 +138,8 @@ public class OrdersController {
    */
   @PostMapping
   public ResponseEntity<List<Order>> createParkOrder(@RequestBody Order order) {
-    if (StringUtils.isNotBlank(order.getCarId()) && !ordersService.isExistInParkingLotCarId(order.getCarId())) {
-      return ResponseEntity.ok(ordersService.addOrders(order));
+    if (StringUtils.isNotBlank(order.getCarId()) && !orderServiceImpl.isExistInParkingLotCarId(order.getCarId())) {
+      return ResponseEntity.ok(orderServiceImpl.createParkOrders(order));
     }
     log.error("【创建停车订单】 carId错误或者car已经存在停车场 , order={}", order);
     return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
@@ -156,7 +156,7 @@ public class OrdersController {
   public ResponseEntity<OrderDTO> assignOrderToParkingBoy(@PathVariable("orderId") Integer orderId,
                                                           @PathVariable("boyId") Long boyId) {
     try {
-      return ResponseEntity.ok(ordersService.assignOrderToParkingBoy(orderId, boyId));
+      return ResponseEntity.ok(orderServiceImpl.assignOrderToParkingBoy(orderId, boyId));
     } catch (Exception e) {
       log.error("【管理员分配某个订单给指定的停车员】 "
           .concat(e.getMessage())
@@ -177,7 +177,7 @@ public class OrdersController {
   public ResponseEntity<OrderDTO> finishParkOrder(@PathVariable("orderId") Integer orderId,
                                                   @PathVariable("parkingLotId") Long parkingLotId) {
     try {
-      return ResponseEntity.ok(ordersService.finishParkOrder(orderId, parkingLotId));
+      return ResponseEntity.ok(orderServiceImpl.finishParkOrder(orderId, parkingLotId));
     } catch (Exception e) {
       log.error("【停车员结束订单（抢单，停车完成）】 "
           .concat(e.getMessage())
@@ -195,7 +195,7 @@ public class OrdersController {
   @PostMapping("/createUnParkOrder/{carId}")
   public ResponseEntity<OrderDTO> createUnParkOrder(@PathVariable("carId") String carId) {
     try {
-      return ResponseEntity.status(HttpStatus.CREATED).body(ordersService.createUnParkOrders(carId));
+      return ResponseEntity.status(HttpStatus.CREATED).body(orderServiceImpl.createUnParkOrders(carId));
     } catch (Exception e) {
       log.error("【用户取车，创建取车订单,停车员尚未取车】 "
           .concat(e.getMessage())
@@ -214,7 +214,7 @@ public class OrdersController {
   @PutMapping("/finishUnParkOrder/{carId}")
   public ResponseEntity<OrderDTO> finishUnParkOrder(@PathVariable("carId") String carId) {
     try {
-      return ResponseEntity.ok(ordersService.finishUnParkOrder(carId));
+      return ResponseEntity.ok(orderServiceImpl.finishUnParkOrder(carId));
     } catch (Exception e) {
       log.error("【停车员取车, 结束取车订单】 "
           .concat(e.getMessage())
@@ -231,7 +231,7 @@ public class OrdersController {
    */
   @GetMapping("/showHistoryOrders/{userId}")
   public ResponseEntity<List<Order>> showHistoryOrders(@PathVariable("userId") Long userId) {
-    return ResponseEntity.ok(ordersService.showHistoryOrdersByUserId(userId, OrderStatusEnum.UNPARK_DONE.getMessage()));
+    return ResponseEntity.ok(orderServiceImpl.showHistoryOrdersByUserId(userId, OrderStatusEnum.UNPARK_DONE.getMessage()));
   }
 
 }

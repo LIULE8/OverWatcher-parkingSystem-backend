@@ -3,7 +3,7 @@ package com.oocl.overwatcher.controller;
 import com.oocl.overwatcher.converter.User2UserDTOConverter;
 import com.oocl.overwatcher.dto.UserDTO;
 import com.oocl.overwatcher.entities.User;
-import com.oocl.overwatcher.service.RoleService;
+import com.oocl.overwatcher.service.impl.RoleServiceImpl;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -28,11 +28,11 @@ public class RoleController {
   private static final String CONDITION_STATUS = "status";
   private static final String CONDITION_PARKINGBOY = "员工";
 
-  private final RoleService roleService;
+  private final RoleServiceImpl roleServiceImpl;
 
   @Autowired
-  public RoleController(RoleService roleService) {
-    this.roleService = roleService;
+  public RoleController(RoleServiceImpl roleServiceImpl) {
+    this.roleServiceImpl = roleServiceImpl;
   }
 
   /**
@@ -42,7 +42,7 @@ public class RoleController {
    */
   @GetMapping("/{roleName}")
   public ResponseEntity<List<UserDTO>> findAllUsersByRoleName(@PathVariable("roleName") String roleName) {
-    List<User> parkingBoys = roleService.findRoleByName(roleName).getUsers();
+    List<User> parkingBoys = roleServiceImpl.findRoleByName(roleName).getUsers();
     return ResponseEntity.ok(User2UserDTOConverter.convert(parkingBoys));
   }
 
@@ -55,7 +55,7 @@ public class RoleController {
    */
   @GetMapping("/parkingBoys/condition")
   public List<UserDTO> findAllParkingBoysByCondition(String condition, String value) {
-    List<User> userList = roleService.findRoleByName(CONDITION_PARKINGBOY).getUsers();
+    List<User> userList = roleServiceImpl.findRoleByName(CONDITION_PARKINGBOY).getUsers();
     if (StringUtils.isNotBlank(condition)) {
       switch (condition) {
         case CONDITION_NAME:

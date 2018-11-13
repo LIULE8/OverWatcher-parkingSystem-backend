@@ -5,7 +5,7 @@ import com.oocl.overwatcher.converter.ParkingLot2ParkingLotDetail;
 import com.oocl.overwatcher.dto.ParkingLotDTO;
 import com.oocl.overwatcher.dto.ParkingLotDetail;
 import com.oocl.overwatcher.entities.ParkingLot;
-import com.oocl.overwatcher.service.ParkingLotService;
+import com.oocl.overwatcher.service.impl.ParkingLotServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,11 +25,11 @@ import java.util.List;
 @Slf4j
 public class ParkingLotController {
 
-  private final ParkingLotService parkingLotService;
+  private final ParkingLotServiceImpl parkingLotServiceImpl;
 
   @Autowired
-  public ParkingLotController(ParkingLotService parkingLotService) {
-    this.parkingLotService = parkingLotService;
+  public ParkingLotController(ParkingLotServiceImpl parkingLotServiceImpl) {
+    this.parkingLotServiceImpl = parkingLotServiceImpl;
   }
 
   /**
@@ -43,7 +43,7 @@ public class ParkingLotController {
   public ResponseEntity<List<ParkingLotDTO>> getAllParkingLotByPage(@RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
                                                                     @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
     PageRequest pageRequest = PageRequest.of(curPage, pageSize);
-    List<ParkingLot> parkingLotList = parkingLotService.getAllParkingLotByPage(pageRequest).getContent();
+    List<ParkingLot> parkingLotList = parkingLotServiceImpl.getAllParkingLotByPage(pageRequest).getContent();
     List<ParkingLotDTO> parkingLotDTOList = ParkingLot2ParkingLotDTOConverter.convert(parkingLotList);
     return ResponseEntity.ok(parkingLotDTOList);
   }
@@ -57,7 +57,7 @@ public class ParkingLotController {
   @GetMapping("/{id}")
   public ResponseEntity<ParkingLot> findOne(@PathVariable("id") Long parkingLotId) {
     try {
-      ParkingLot parkingLot = parkingLotService.findOne(parkingLotId).orElseThrow(() -> new Exception("没有该停车场"));
+      ParkingLot parkingLot = parkingLotServiceImpl.findOne(parkingLotId).orElseThrow(() -> new Exception("没有该停车场"));
       return ResponseEntity.ok(parkingLot);
     } catch (Exception e) {
       log.error("【根据 parkingLotId 查询停车场信息】, 没有找到该停车场, parkingLotId={}", parkingLotId);
@@ -77,7 +77,7 @@ public class ParkingLotController {
                                                                          @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
     PageRequest pageRequest = PageRequest.of(curPage, pageSize);
 
-    List<ParkingLot> parkingLots = parkingLotService.getAllParkingLotByPage(pageRequest).getContent();
+    List<ParkingLot> parkingLots = parkingLotServiceImpl.getAllParkingLotByPage(pageRequest).getContent();
 
     List<ParkingLotDetail> collect = ParkingLot2ParkingLotDetail.convert(parkingLots);
 
@@ -91,7 +91,7 @@ public class ParkingLotController {
    */
   @GetMapping("/nonOwner")
   public ResponseEntity<List<ParkingLot>> findAllParkingLotNoOwner() {
-    return ResponseEntity.ok(parkingLotService.findAllParkingLotNoOwner());
+    return ResponseEntity.ok(parkingLotServiceImpl.findAllParkingLotNoOwner());
   }
 
   /**
@@ -108,7 +108,7 @@ public class ParkingLotController {
                                                                     @RequestParam("curPage") Integer curPage) {
     PageRequest pageRequest = PageRequest.of(curPage, pageSize);
 
-    List<ParkingLot> parkingLots = parkingLotService.findByCondition(condition, value, pageRequest).getContent();
+    List<ParkingLot> parkingLots = parkingLotServiceImpl.findByCondition(condition, value, pageRequest).getContent();
 
     return ResponseEntity.ok(ParkingLot2ParkingLotDTOConverter.convert(parkingLots));
   }
@@ -122,7 +122,7 @@ public class ParkingLotController {
   @PostMapping
   public ResponseEntity<Void> createParkingLot(@NotNull @RequestBody ParkingLot parkingLot) {
     try {
-      parkingLotService.save(parkingLot);
+      parkingLotServiceImpl.save(parkingLot);
       return ResponseEntity.status(HttpStatus.CREATED).build();
     } catch (Exception e) {
       log.error("【创建停车场】 创建失败, parkingLot={}", parkingLot);
@@ -141,7 +141,7 @@ public class ParkingLotController {
   public ResponseEntity<Void> updateParkingLotStatus(@RequestBody ParkingLot parkingLot) {
     try {
       if (StringUtils.isNotBlank(parkingLot.getStatus()) && parkingLot.getParkingLotId() != null) {
-        parkingLotService.updateStatus(parkingLot);
+        parkingLotServiceImpl.updateStatus(parkingLot);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
       }
     } catch (Exception e) {
@@ -163,7 +163,7 @@ public class ParkingLotController {
   public ResponseEntity<Void> updateParkingLog(@NotNull @RequestBody ParkingLot parkingLot) {
     try {
       if (parkingLot.getParkingLotId() != null) {
-        parkingLotService.updateParkingLog(parkingLot);
+        parkingLotServiceImpl.updateParkingLog(parkingLot);
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
       }
     } catch (Exception e) {

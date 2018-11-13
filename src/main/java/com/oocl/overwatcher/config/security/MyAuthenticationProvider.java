@@ -1,4 +1,4 @@
-package com.oocl.overwatcher.security;
+package com.oocl.overwatcher.config.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 public class MyAuthenticationProvider implements AuthenticationProvider {
 
     @Autowired
-    private MyUserDetailsService userDetailsService;
+    private MyUserDetailsServiceImpl userDetailsService;
 
 
     @Override

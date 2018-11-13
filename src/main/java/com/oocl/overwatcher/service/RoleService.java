@@ -1,24 +1,11 @@
 package com.oocl.overwatcher.service;
 
-import com.oocl.overwatcher.entities.Role;
-import com.oocl.overwatcher.repositories.RoleRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 /**
+ * 描述: 角色服务接口
+ *
  * @author LIULE9
+ * @create 2018-11-13 3:08 PM
  */
-@Service
-public class RoleService {
+public interface RoleService {
 
-  private final RoleRepository roleRepository;
-
-  @Autowired
-  public RoleService(RoleRepository roleRepository) {
-    this.roleRepository = roleRepository;
-  }
-
-  public Role findRoleByName(String roleName) {
-    return roleRepository.findByName(roleName);
-  }
 }

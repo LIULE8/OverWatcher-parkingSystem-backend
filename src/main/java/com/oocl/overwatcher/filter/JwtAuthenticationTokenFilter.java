@@ -1,8 +1,9 @@
 package com.oocl.overwatcher.filter;
 
-import com.oocl.overwatcher.config.WebSecurityConfig;
+import com.oocl.overwatcher.config.security.WebSecurityConfig;
 import com.oocl.overwatcher.utils.JWTTokenUtils;
 import io.jsonwebtoken.ExpiredJwtException;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,9 +19,13 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+
+/**
+ * @author LIULE9
+ */
+@Slf4j
 public class JwtAuthenticationTokenFilter extends GenericFilterBean {
 
-    private final Logger log = LoggerFactory.getLogger(JwtAuthenticationTokenFilter.class);
 
     @Autowired
     private JWTTokenUtils tokenProvider;

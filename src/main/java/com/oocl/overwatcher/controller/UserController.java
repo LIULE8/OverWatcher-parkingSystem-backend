@@ -7,7 +7,7 @@ import com.oocl.overwatcher.dto.ParkingLotDTO;
 import com.oocl.overwatcher.dto.UserDTO;
 import com.oocl.overwatcher.entities.ParkingLot;
 import com.oocl.overwatcher.entities.User;
-import com.oocl.overwatcher.service.UserService;
+import com.oocl.overwatcher.service.impl.UserServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,11 +30,11 @@ public class UserController {
   private static final String CONDITION_LEFT = "left";
   private static final String CONDITION_RIGHT = "right";
 
-  private final UserService userService;
+  private final UserServiceImpl userServiceImpl;
 
   @Autowired
-  public UserController(UserService userService) {
-    this.userService = userService;
+  public UserController(UserServiceImpl userServiceImpl) {
+    this.userServiceImpl = userServiceImpl;
   }
 
   /**
@@ -48,14 +48,14 @@ public class UserController {
   public ResponseEntity<List<UserDTO>> findAllUserByPage(@RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
                                                          @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
     PageRequest pageRequest = PageRequest.of(curPage, pageSize);
-    List<User> userList = userService.findAllUserByPage(pageRequest).getContent();
+    List<User> userList = userServiceImpl.findAllUserByPage(pageRequest).getContent();
     return ResponseEntity.ok(User2UserDTOConverter.convert(userList));
   }
 
   @GetMapping("{id}")
   public ResponseEntity<UserDTO> findOne(@PathVariable("id") Long id) {
     try {
-      User user = userService.findOne(id).orElseThrow(() -> new Exception("找不到该用户"));
+      User user = userServiceImpl.findOne(id).orElseThrow(() -> new Exception("找不到该用户"));
       return ResponseEntity.ok(User2UserDTOConverter.convert(user));
     } catch (Exception e) {
       e.printStackTrace();
@@ -71,7 +71,7 @@ public class UserController {
    */
   @GetMapping("{id}/parkingLots")
   public ResponseEntity<List<ParkingLot>> findAllParkingLotByUserId(@PathVariable("id") Long userId) {
-    Optional<User> userOptional = userService.findOne(userId);
+    Optional<User> userOptional = userServiceImpl.findOne(userId);
     if (userOptional.isPresent()) {
       User user = userOptional.get();
       return ResponseEntity.ok(user.getParkingLotList());
@@ -93,7 +93,7 @@ public class UserController {
     user.getRoleList().forEach(role -> role.getUsers().add(user));
 
     //2. 新增一个用户
-    User savedUser = userService.addUser(user);
+    User savedUser = userServiceImpl.addUser(user);
 
     if (savedUser != null) {
       return ResponseEntity.ok(savedUser);
@@ -114,7 +114,7 @@ public class UserController {
   public ResponseEntity assignParkingLotToParkingBoy(@PathVariable("boyId") Long parkingBoyId,
                                                      @PathVariable("lotId") Long parkingLotId) {
     try {
-      userService.assignParkingLotToParkingBoy(parkingBoyId, parkingLotId);
+      userServiceImpl.assignParkingLotToParkingBoy(parkingBoyId, parkingLotId);
       log.info("【指定某个停车场给停车员】 指定成功, parkingBoyId={}, parkingLotId={}", parkingBoyId, parkingLotId);
       return ResponseEntity.status(HttpStatus.CREATED).build();
     } catch (Exception e) {
@@ -135,7 +135,7 @@ public class UserController {
   @PutMapping("status/on")
   public ResponseEntity<UserDTO> userClockOutWhenOnWorkOrAfterWork(@RequestParam("userId") Long userId) {
     try {
-      User user = userService.userClockOutWhenOnWorkOrAfterWork(userId);
+      User user = userServiceImpl.userClockOutWhenOnWorkOrAfterWork(userId);
       return ResponseEntity.ok(User2UserDTOConverter.convert(user));
     } catch (Exception e) {
       log.error("【员工上下班打卡】 打卡失败, "
@@ -160,7 +160,7 @@ public class UserController {
                                                                       @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
                                                                       @RequestParam(value = "curPage", defaultValue = "1") Integer curPage) {
     if (StringUtils.isNotBlank(condition) && StringUtils.isNotBlank(value)) {
-      List<User> userList = userService.findAllUsersByConditionAndPage(condition, value, PageRequest.of(curPage, pageSize)).getContent();
+      List<User> userList = userServiceImpl.findAllUsersByConditionAndPage(condition, value, PageRequest.of(curPage, pageSize)).getContent();
       return ResponseEntity.ok(User2UserDTOConverter.convert(userList));
     }
     log.error("【用户条件查询】参数错误, condition={}, value={}", condition, value);
@@ -178,7 +178,7 @@ public class UserController {
   @PutMapping("alive/{id}")
   public ResponseEntity aliveOrFreezeUser(@PathVariable("id") Long userId) {
     try {
-      userService.aliveOrFreezeUser(userId);
+      userServiceImpl.aliveOrFreezeUser(userId);
       return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     } catch (Exception e) {
       log.error("【激活或冻结某个账户】"
@@ -201,11 +201,11 @@ public class UserController {
     if (StringUtils.isNotBlank(direction)) {
       if (CONDITION_LEFT.equals(direction)) {
         //1.把停车场设为无人管理
-        List<ParkingLot> parkingLots = userService.assignParkingLotNoOwner(changeParkingLotDTO);
+        List<ParkingLot> parkingLots = userServiceImpl.assignParkingLotNoOwner(changeParkingLotDTO);
         return ResponseEntity.ok(ParkingLot2ParkingLotDTOConverter.convert(parkingLots));
       } else if (CONDITION_RIGHT.equals(direction)) {
         //2.把无人管理的停车场交由当前停车员管理
-        List<ParkingLot> parkingLots = userService.assignParkingLotToAnotherParkingBoy(changeParkingLotDTO);
+        List<ParkingLot> parkingLots = userServiceImpl.assignParkingLotToAnotherParkingBoy(changeParkingLotDTO);
         return ResponseEntity.ok(ParkingLot2ParkingLotDTOConverter.convert(parkingLots));
       }
     }
@@ -223,7 +223,7 @@ public class UserController {
   @PutMapping("{id}")
   public ResponseEntity<UserDTO> updateUser(@PathVariable("id") Long userId, @RequestBody User user) {
     try {
-      User newer = userService.updateUser(userId, user);
+      User newer = userServiceImpl.updateUser(userId, user);
       return ResponseEntity.ok(User2UserDTOConverter.convert(newer));
     } catch (Exception e) {
       log.error("【修改用户信息】"

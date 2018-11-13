@@ -1,6 +1,6 @@
 package com.oocl.overwatcher.controller;
 
-import com.oocl.overwatcher.config.WebSecurityConfig;
+import com.oocl.overwatcher.config.security.WebSecurityConfig;
 import com.oocl.overwatcher.dto.LoginDTO;
 import com.oocl.overwatcher.entities.User;
 import com.oocl.overwatcher.repositories.UserRepository;
@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletResponse;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
 /**
  * Created by linyuan on 2017/12/13.

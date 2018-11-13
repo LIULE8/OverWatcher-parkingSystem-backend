@@ -1,4 +1,4 @@
-package com.oocl.overwatcher.security;
+package com.oocl.overwatcher.config.security;
 
 import com.oocl.overwatcher.entities.Role;
 import com.oocl.overwatcher.entities.User;
@@ -19,7 +19,7 @@ public class MyUserDetails implements UserDetails {
 
     private User user;
 
-    public MyUserDetails(User user) {
+    public  MyUserDetails(User user) {
         this.user = user;
     }
 
