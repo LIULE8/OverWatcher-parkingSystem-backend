@@ -5,6 +5,7 @@ import com.oocl.overwatcher.entities.ParkingLot;
 import com.oocl.overwatcher.entities.User;
 import com.oocl.overwatcher.enums.UserStatusEnum;
 import com.oocl.overwatcher.repositories.UserRepository;
+import com.oocl.overwatcher.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,7 @@ import java.util.Random;
  */
 @Service
 @Slf4j
-public class UserServiceImpl {
+public class UserServiceImpl implements UserService {
 
   /**
    * 限制分钟内不能连续打卡两次
@@ -60,14 +61,17 @@ public class UserServiceImpl {
     this.parkingLotServiceImpl = parkingLotServiceImpl;
   }
 
+  @Override
   public Optional<User> findOne(Long id) {
     return userRepository.findById(id);
   }
 
+  @Override
   public Page<User> findAllUserByPage(Pageable pageable) {
     return userRepository.findAll(pageable);
   }
 
+  @Override
   public Page<User> findAllUsersByConditionAndPage(String condition, String value, Pageable pageable) {
     return userRepository.findAll(((root, query, criteriaBuilder) -> {
       Predicate predicate = null;
@@ -91,6 +95,7 @@ public class UserServiceImpl {
     }), pageable);
   }
 
+  @Override
   @Transactional
   public User addUser(User user) {
     User result = new User();
@@ -105,6 +110,7 @@ public class UserServiceImpl {
     return result;
   }
 
+  @Override
   @Transactional
   public void aliveOrFreezeUser(Long userId) {
     Optional<User> userOptional = findOne(userId);
@@ -115,6 +121,7 @@ public class UserServiceImpl {
     throw new RuntimeException("参数错误");
   }
 
+  @Override
   @Transactional(rollbackOn = RuntimeException.class)
   public List<ParkingLot> assignParkingLotNoOwner(ChangeParkingLotDTO changeParkingLotDTO) throws RuntimeException {
     List<Long> parkingLotIdList = changeParkingLotDTO.getParkingLotId();
@@ -128,6 +135,7 @@ public class UserServiceImpl {
     return parkingLotServiceImpl.findAll();
   }
 
+  @Override
   @Transactional(rollbackOn = RuntimeException.class)
   public List<ParkingLot> assignParkingLotToAnotherParkingBoy(ChangeParkingLotDTO changeParkingLotDTO) {
     List<Long> parkingLotIdList = changeParkingLotDTO.getParkingLotId();
@@ -155,6 +163,7 @@ public class UserServiceImpl {
     throw new RuntimeException("该停车场已有人管理");
   }
 
+  @Override
   @Transactional
   public User userClockOutWhenOnWorkOrAfterWork(Long id) {
     DateTimeFormatter df = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -203,6 +212,7 @@ public class UserServiceImpl {
     return user;
   }
 
+  @Override
   @Transactional
   public User updateUser(Long userId, User user) {
     User dbUser = findOne(userId).orElseThrow(() -> new RuntimeException("找不到该用户"));
