@@ -1,30 +1,38 @@
 package com.oocl.overwatcher.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.NotBlank;
 
 import java.io.Serializable;
 
+/**
+ * @author LIULE9
+ */
 @Data
-public class LoginDTO implements Serializable{
-    @NotBlank(message = "用户名不能为空")
-    private String username;
-    @NotBlank(message = "密码不能为空")
-    private String password;
+@NoArgsConstructor
+@AllArgsConstructor
+public class LoginDTO implements Serializable {
 
-    public String getUsername() {
-        return username;
-    }
+  @JsonProperty("roles")
+  private String roleName;
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
+  @JsonProperty("token")
+  private String token;
 
-    public String getPassword() {
-        return password;
-    }
+  @JsonProperty("id")
+  private String userId;
 
-    public void setPassword(String password) {
-        this.password = password;
-    }
+  @JsonProperty("username")
+  private String username;
+
+  @JsonProperty("msg")
+  private String message;
+
+
+  public LoginDTO(String message) {
+    this.message = message;
+  }
 }

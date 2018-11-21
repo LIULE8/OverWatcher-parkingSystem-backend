@@ -15,6 +15,5 @@ import java.util.Optional;
 public interface UserRepository extends JpaRepository<User, Long> , JpaSpecificationExecutor<User> {
     Optional<User> findByUserName(String name);
 
-    @Query(value = "select * from `user` where user_name=?1 and alive = ?2",nativeQuery = true)
-    Optional<User> findByUserNameAndAlive(String username, boolean b);
+    Optional<User> findUserByUserNameAndAliveEquals(String username, boolean alive);
 }

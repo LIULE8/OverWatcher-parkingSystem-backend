@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest
-public class ParkingSysApplicationTests {
+public class ParkingSystemApplicationTests {
 
 	@Test
 	public void contextLoads() {

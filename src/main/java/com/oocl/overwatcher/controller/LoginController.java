@@ -3,8 +3,12 @@ package com.oocl.overwatcher.controller;
 import com.oocl.overwatcher.config.security.WebSecurityConfig;
 import com.oocl.overwatcher.dto.LoginDTO;
 import com.oocl.overwatcher.entities.User;
+import com.oocl.overwatcher.enums.LoginStatusEnum;
+import com.oocl.overwatcher.exceptions.ParkingSystemException;
+import com.oocl.overwatcher.forms.LoginForm;
 import com.oocl.overwatcher.repositories.UserRepository;
 import com.oocl.overwatcher.utils.JWTTokenUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -14,61 +18,57 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import javax.servlet.http.HttpServletResponse;
-import java.util.HashMap;
-import java.util.Map;
-
 /**
- * Created by linyuan on 2017/12/13.
+ * @author LIULE9
  */
 @RestController
 @CrossOrigin
+@Slf4j
 public class LoginController {
 
-    @Autowired
-    private UserRepository userRepository;
+  private final UserRepository userRepository;
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
+  private final AuthenticationManager authenticationManager;
 
-    @Autowired
-    private JWTTokenUtils jwtTokenUtils;
+  private final JWTTokenUtils jwtTokenUtils;
 
-    @PostMapping("/auth/login")
-    public Map<String, String> login(@RequestBody LoginDTO loginDTO, HttpServletResponse httpResponse) throws Exception {
-        //通过用户名和密码创建一个 Authentication 认证对象，实现类为 UsernamePasswordAuthenticationToken
-        UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(loginDTO.getUsername(), loginDTO.getPassword());
-        //如果认证对象不为空
-        userRepository.findByUserName(authenticationToken.getPrincipal().toString())
-                .orElseThrow(() -> new Exception("用户不存在"));
-        try {
-            Map<String, String> map = new HashMap<>();
-            User user = userRepository.findByUserNameAndAlive(authenticationToken.getPrincipal().toString(), true).orElse(null);
-            if (user != null) {
-                //通过 AuthenticationManager（默认实现为ProviderManager）的authenticate方法验证 Authentication 对象
-                Authentication authentication = authenticationManager.authenticate(authenticationToken);
-                //将 Authentication 绑定到 SecurityContext
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                //生成Token
-                String token = jwtTokenUtils.createToken(authentication, false);
-                //将Token写入到Http头部
-                httpResponse.addHeader(WebSecurityConfig.AUTHORIZATION_HEADER, token);
-                map.put("roles", user.getRoleList().get(0).getName());
-                map.put("token", token);
-                map.put("id", user.getId() + "");
-                map.put("username", user.getUserName());
-                map.put("msg", "true");
-            } else {
-                map.put("msg", "该用户已经被冻结");
-            }
-            return map;
-        } catch (BadCredentialsException authentication) {
-            throw new Exception("密码错误");
-        }
+  @Autowired
+  public LoginController(UserRepository userRepository, AuthenticationManager authenticationManager, JWTTokenUtils jwtTokenUtils) {
+    this.userRepository = userRepository;
+    this.authenticationManager = authenticationManager;
+    this.jwtTokenUtils = jwtTokenUtils;
+  }
+
+  @PostMapping("/auth/login")
+  public ResponseEntity<LoginDTO> login(@RequestBody LoginForm loginForm) {
+    try {
+      User user = userRepository.findUserByUserNameAndAliveEquals(loginForm.getUsername(), true)
+          .orElseThrow(() -> new ParkingSystemException(LoginStatusEnum.FAIL_USERNAME.getCode(), LoginStatusEnum.FAIL_USERNAME.getMessage()));
+
+      //spring security
+      Authentication request = new UsernamePasswordAuthenticationToken(loginForm.getUsername(), loginForm.getPassword());
+      Authentication result = authenticationManager.authenticate(request);
+      SecurityContextHolder.getContext().setAuthentication(result);
+
+      //Token
+      String token = jwtTokenUtils.createToken(result, false);
+
+      LoginDTO loginDTO = new LoginDTO(user.getRoleList().get(0).getName(), token, String.valueOf(user.getId()), user.getUserName(), "true");
+
+      return ResponseEntity.ok().header(WebSecurityConfig.AUTHORIZATION_HEADER, token).body(loginDTO);
+
+    } catch (ParkingSystemException e) {
+      log.error("【认证登录】 ".concat(e.getMessage())
+          .concat(", username={}"), loginForm.getUsername());
+      return ResponseEntity.badRequest().body(new LoginDTO("该用户已经被冻结"));
+    } catch (BadCredentialsException e) {
+      log.error("【认证登录】 密码错误".concat(", username={}, password"), loginForm.getUsername(), loginForm.getPassword());
+      throw new ParkingSystemException(LoginStatusEnum.FAIL_PASSWORD.getCode(), LoginStatusEnum.FAIL_PASSWORD.getMessage());
     }
+  }
 
-    @PutMapping("/userLogout")
-    public ResponseEntity logout(Long id) {
-        return ResponseEntity.ok().build();
-    }
+  @PutMapping("/userLogout")
+  public ResponseEntity logout(Long id) {
+    return ResponseEntity.ok().build();
+  }
 }

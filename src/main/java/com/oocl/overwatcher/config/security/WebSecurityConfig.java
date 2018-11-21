@@ -27,12 +27,15 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
   public static final String AUTHORIZATION_HEADER = "Authorization";
 
+
+  public static final String LOGIN_PAGE = "/";
+
   public static final String AUTHORIZATION_TOKEN = "access_token";
 
-  private final MyUserDetailsServiceImpl userDetailsService;
+  private final UserDetailsServiceImpl userDetailsService;
 
   @Autowired
-  public WebSecurityConfig(MyUserDetailsServiceImpl userDetailsService) {
+  public WebSecurityConfig(UserDetailsServiceImpl userDetailsService) {
     this.userDetailsService = userDetailsService;
   }
 
@@ -48,21 +51,16 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
   /**
    * 配置请求访问策略
    *
-   * @param http : 提供配置，可以自定义请求访问策略
+   * @param http : 提供授权的配置，可以自定义请求访问策略
    * @throws Exception
    */
   @Override
   protected void configure(HttpSecurity http) throws Exception {
-    http
-        //关闭CSRF、CORS
-        .cors().and()
-        .csrf().disable()
+    http.cors().and().csrf().disable()
         //由于使用Token，所以不需要Session
         .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
         .and()
-        //验证Http请求
         .authorizeRequests()
-        //允许所有用户访问首页 与 登录
         .antMatchers("/", "/auth/login").permitAll()
         .antMatchers("/parkingLots/**").permitAll()
         .antMatchers("/parkingBoys/**").permitAll()
@@ -70,17 +68,22 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
         .antMatchers("/employees/**").permitAll()
         .antMatchers("/parkingBoy/**").permitAll()
         .antMatchers("/userLogout/**").permitAll()
-        //其它任何请求都要经过认证通过
         .anyRequest().authenticated()
-        //用户页面需要用户权限
-//                .antMatchers("/userpage").hasAnyRole("USER")
+        .and()
+        .formLogin()
+        .loginPage(LOGIN_PAGE).permitAll()
         .and()
         //设置登出
-        .logout().permitAll();
-    //添加JWT filter 在
-    http.addFilterBefore(genericFilterBean(), UsernamePasswordAuthenticationFilter.class);
+        .logout().logoutSuccessUrl(LOGIN_PAGE).permitAll()
+        .and()
+        //添加JWT filter
+        .addFilterBefore(genericFilterBean(), UsernamePasswordAuthenticationFilter.class);
   }
 
+  /**
+   * 自定义密码的编码方式
+   * @return
+   */
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
