@@ -27,16 +27,16 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
   public static final String AUTHORIZATION_HEADER = "Authorization";
 
-
   public static final String LOGIN_PAGE = "/";
-
-  public static final String AUTHORIZATION_TOKEN = "access_token";
 
   private final UserDetailsServiceImpl userDetailsService;
 
+  private final JwtAuthenticationTokenFilter jwtAuthenticationTokenFilter;
+
   @Autowired
-  public WebSecurityConfig(UserDetailsServiceImpl userDetailsService) {
+  public WebSecurityConfig(UserDetailsServiceImpl userDetailsService, JwtAuthenticationTokenFilter jwtAuthenticationTokenFilter) {
     this.userDetailsService = userDetailsService;
+    this.jwtAuthenticationTokenFilter = jwtAuthenticationTokenFilter;
   }
 
   @Override
@@ -77,7 +77,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
         .logout().logoutSuccessUrl(LOGIN_PAGE).permitAll()
         .and()
         //添加JWT filter
-        .addFilterBefore(genericFilterBean(), UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(jwtAuthenticationTokenFilter, UsernamePasswordAuthenticationFilter.class);
   }
 
   /**
@@ -89,10 +89,6 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     return new BCryptPasswordEncoder();
   }
 
-  @Bean
-  public GenericFilterBean genericFilterBean() {
-    return new JwtAuthenticationTokenFilter();
-  }
 
   @Bean(name = BeanIds.AUTHENTICATION_MANAGER)
   @Override

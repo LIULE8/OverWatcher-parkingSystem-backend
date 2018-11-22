@@ -1,14 +1,13 @@
 package com.oocl.overwatcher.filter;
 
 import com.oocl.overwatcher.config.security.WebSecurityConfig;
-import com.oocl.overwatcher.utils.JWTTokenUtils;
+import com.oocl.overwatcher.utils.JwtUtils;
 import io.jsonwebtoken.ExpiredJwtException;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.GenericFilterBean;
 
@@ -24,47 +23,49 @@ import java.io.IOException;
  * @author LIULE9
  */
 @Slf4j
+@Component
 public class JwtAuthenticationTokenFilter extends GenericFilterBean {
 
 
-    @Autowired
-    private JWTTokenUtils tokenProvider;
+  private final JwtUtils jwtUtils;
 
-    @Override
-    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
-        System.out.println("JwtAuthenticationTokenFilter");
-        try {
-            HttpServletRequest httpReq = (HttpServletRequest) servletRequest;
-            String jwt = resolveToken(httpReq);
-            //验证JWT是否正确
-            if (StringUtils.hasText(jwt) && this.tokenProvider.validateToken(jwt)) {
-                //获取用户认证信息
-                Authentication authentication = this.tokenProvider.getAuthentication(jwt);
-                //将用户保存到SecurityContext
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-            }
-            filterChain.doFilter(servletRequest, servletResponse);
-        }catch (ExpiredJwtException e){
-            //JWT失效
-            log.info("Security exception for user {} - {}",
-                    e.getClaims().getSubject(), e.getMessage());
+  @Autowired
+  public JwtAuthenticationTokenFilter(JwtUtils jwtUtils) {
+    this.jwtUtils = jwtUtils;
+  }
 
-            log.trace("Security exception trace: {}", e);
-            ((HttpServletResponse) servletResponse).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        }
+  @Override
+  public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+    try {
+      log.info("jwt filter");
+      HttpServletRequest request = (HttpServletRequest) servletRequest;
+      String jwt = getTokenFromRequestHeader(request);
+      if (StringUtils.hasText(jwt) && jwtUtils.validateToken(jwt)) {
+        //获取用户认证信息
+        Authentication authentication = jwtUtils.getAuthenticationParsingJwt(jwt);
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        filterChain.doFilter(servletRequest, servletResponse);
+      } else {
+        ((HttpServletResponse) servletResponse).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+      }
+    } catch (ExpiredJwtException e) {
+      log.warn("Security exception user={}, reason={}", e.getClaims().getSubject(), e.getMessage());
+      ((HttpServletResponse) servletResponse).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
     }
+  }
 
-    private String resolveToken(HttpServletRequest request){
-        //从HTTP头部获取TOKEN
-        String bearerToken = request.getHeader(WebSecurityConfig.AUTHORIZATION_HEADER);
-        if (StringUtils.hasText(bearerToken)){
-            return bearerToken;
-        }
-//        //从请求参数中获取TOKEN
-//        String jwt = request.getParameter(WebSecurityConfig.AUTHORIZATION_TOKEN);
-//        if (StringUtils.hasText(jwt)) {
-//            return jwt;
-//        }
-        return null;
+  /**
+   * 从请求头部获取token，如果token放在cookie，也可改成从cookie中获取
+   *
+   * @param request
+   * @return
+   */
+  private String getTokenFromRequestHeader(HttpServletRequest request) {
+    //从HTTP头部获取TOKEN
+    String token = request.getHeader(WebSecurityConfig.AUTHORIZATION_HEADER);
+    if (StringUtils.hasText(token)) {
+      return token;
     }
+    return null;
+  }
 }

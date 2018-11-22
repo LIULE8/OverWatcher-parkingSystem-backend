@@ -7,7 +7,7 @@ import com.oocl.overwatcher.enums.LoginStatusEnum;
 import com.oocl.overwatcher.exceptions.ParkingSystemException;
 import com.oocl.overwatcher.forms.LoginForm;
 import com.oocl.overwatcher.repositories.UserRepository;
-import com.oocl.overwatcher.utils.JWTTokenUtils;
+import com.oocl.overwatcher.utils.JwtUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -30,13 +30,13 @@ public class LoginController {
 
   private final AuthenticationManager authenticationManager;
 
-  private final JWTTokenUtils jwtTokenUtils;
+  private final JwtUtils jwtUtils;
 
   @Autowired
-  public LoginController(UserRepository userRepository, AuthenticationManager authenticationManager, JWTTokenUtils jwtTokenUtils) {
+  public LoginController(UserRepository userRepository, AuthenticationManager authenticationManager, JwtUtils jwtUtils) {
     this.userRepository = userRepository;
     this.authenticationManager = authenticationManager;
-    this.jwtTokenUtils = jwtTokenUtils;
+    this.jwtUtils = jwtUtils;
   }
 
   @PostMapping("/auth/login")
@@ -51,7 +51,7 @@ public class LoginController {
       SecurityContextHolder.getContext().setAuthentication(result);
 
       //Token
-      String token = jwtTokenUtils.createToken(result, false);
+      String token = jwtUtils.createToken(result, false);
 
       LoginDTO loginDTO = new LoginDTO(user.getRoleList().get(0).getName(), token, String.valueOf(user.getId()), user.getUserName(), "true");
 
