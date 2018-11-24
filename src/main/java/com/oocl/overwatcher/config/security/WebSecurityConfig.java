@@ -1,9 +1,11 @@
 package com.oocl.overwatcher.config.security;
 
 import com.oocl.overwatcher.filter.JwtAuthenticationTokenFilter;
+import com.oocl.overwatcher.filter.MyCorsFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.BeanIds;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
@@ -25,75 +27,76 @@ import org.springframework.web.filter.GenericFilterBean;
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 
-  public static final String AUTHORIZATION_HEADER = "Authorization";
+    public static final String AUTHORIZATION_HEADER = "Authorization";
 
-  public static final String LOGIN_PAGE = "/";
+    private static final String LOGIN_PAGE = "http://cell.nat300.top/";
 
-  private final UserDetailsServiceImpl userDetailsService;
+    private final UserDetailsServiceImpl userDetailsService;
 
-  private final JwtAuthenticationTokenFilter jwtAuthenticationTokenFilter;
+    private final JwtAuthenticationTokenFilter jwtAuthenticationTokenFilter;
 
-  @Autowired
-  public WebSecurityConfig(UserDetailsServiceImpl userDetailsService, JwtAuthenticationTokenFilter jwtAuthenticationTokenFilter) {
-    this.userDetailsService = userDetailsService;
-    this.jwtAuthenticationTokenFilter = jwtAuthenticationTokenFilter;
-  }
+    private final MyCorsFilter myCorsFilter;
 
-  @Override
-  protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-    auth
-        //自定义获取用户信息
-        .userDetailsService(userDetailsService)
-        //设置密码加密
-        .passwordEncoder(passwordEncoder());
-  }
+    @Autowired
+    public WebSecurityConfig(UserDetailsServiceImpl userDetailsService, JwtAuthenticationTokenFilter jwtAuthenticationTokenFilter, MyCorsFilter myCorsFilter) {
+        this.userDetailsService = userDetailsService;
+        this.jwtAuthenticationTokenFilter = jwtAuthenticationTokenFilter;
+        this.myCorsFilter = myCorsFilter;
+    }
 
-  /**
-   * 配置请求访问策略
-   *
-   * @param http : 提供授权的配置，可以自定义请求访问策略
-   * @throws Exception
-   */
-  @Override
-  protected void configure(HttpSecurity http) throws Exception {
-    http.cors().and().csrf().disable()
-        //由于使用Token，所以不需要Session
-        .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-        .and()
-        .authorizeRequests()
-        .antMatchers("/", "/auth/login").permitAll()
-        .antMatchers("/parkingLots/**").permitAll()
-        .antMatchers("/parkingBoys/**").permitAll()
-        .antMatchers("/orders/**").permitAll()
-        .antMatchers("/employees/**").permitAll()
-        .antMatchers("/parkingBoy/**").permitAll()
-        .antMatchers("/userLogout/**").permitAll()
-        .anyRequest().authenticated()
-        .and()
-        .formLogin()
-        .loginPage(LOGIN_PAGE).permitAll()
-        .and()
-        //设置登出
-        .logout().logoutSuccessUrl(LOGIN_PAGE).permitAll()
-        .and()
-        //添加JWT filter
-        .addFilterBefore(jwtAuthenticationTokenFilter, UsernamePasswordAuthenticationFilter.class);
-  }
+    @Override
+    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+        auth.userDetailsService(userDetailsService)
+            .passwordEncoder(passwordEncoder());
+    }
 
-  /**
-   * 自定义密码的编码方式
-   * @return
-   */
-  @Bean
-  public PasswordEncoder passwordEncoder() {
-    return new BCryptPasswordEncoder();
-  }
+    /**
+     * 配置请求访问策略
+     *
+     * @param http : 提供授权的配置，可以自定义请求访问策略
+     * @throws Exception
+     */
+    @Override
+    protected void configure(HttpSecurity http) throws Exception {
+        http.cors().and().csrf().disable()
+            //由于使用Token，所以不需要Session
+            .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            .and()
+            .authorizeRequests()
+            .antMatchers("/", "/auth/login").permitAll()
+//        .antMatchers("/parkingLots/**").permitAll()
+//        .antMatchers("/parkingBoys/**").permitAll()
+//        .antMatchers("/orders/**").permitAll()
+//        .antMatchers("/employees/**").permitAll()
+//        .antMatchers("/parkingBoy/**").permitAll()
+//        .antMatchers("/userLogout/**").permitAll()
+            .anyRequest().authenticated()
+            .and()
+            .formLogin()
+            .loginPage(LOGIN_PAGE).permitAll()
+            .and()
+            //设置登出
+            .logout().logoutSuccessUrl(LOGIN_PAGE).permitAll()
+            .and()
+            .addFilterBefore(myCorsFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(jwtAuthenticationTokenFilter, UsernamePasswordAuthenticationFilter.class);
+    }
+
+    /**
+     * 自定义密码的编码方式
+     *
+     * @return
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
 
-  @Bean(name = BeanIds.AUTHENTICATION_MANAGER)
-  @Override
-  public AuthenticationManager authenticationManagerBean() throws Exception {
-    return super.authenticationManagerBean();
-  }
+    @Bean(name = BeanIds.AUTHENTICATION_MANAGER)
+    @Override
+    public AuthenticationManager authenticationManagerBean() throws Exception {
+        return super.authenticationManagerBean();
+    }
 
 }

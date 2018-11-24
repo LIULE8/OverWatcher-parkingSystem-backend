@@ -27,45 +27,48 @@ import java.io.IOException;
 public class JwtAuthenticationTokenFilter extends GenericFilterBean {
 
 
-  private final JwtUtils jwtUtils;
+    private final JwtUtils jwtUtils;
 
-  @Autowired
-  public JwtAuthenticationTokenFilter(JwtUtils jwtUtils) {
-    this.jwtUtils = jwtUtils;
-  }
-
-  @Override
-  public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
-    try {
-      log.info("jwt filter");
-      HttpServletRequest request = (HttpServletRequest) servletRequest;
-      String jwt = getTokenFromRequestHeader(request);
-      if (StringUtils.hasText(jwt) && jwtUtils.validateToken(jwt)) {
-        //获取用户认证信息
-        Authentication authentication = jwtUtils.getAuthenticationParsingJwt(jwt);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        filterChain.doFilter(servletRequest, servletResponse);
-      } else {
-        ((HttpServletResponse) servletResponse).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-      }
-    } catch (ExpiredJwtException e) {
-      log.warn("Security exception user={}, reason={}", e.getClaims().getSubject(), e.getMessage());
-      ((HttpServletResponse) servletResponse).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    @Autowired
+    public JwtAuthenticationTokenFilter(JwtUtils jwtUtils) {
+        this.jwtUtils = jwtUtils;
     }
-  }
 
-  /**
-   * 从请求头部获取token，如果token放在cookie，也可改成从cookie中获取
-   *
-   * @param request
-   * @return
-   */
-  private String getTokenFromRequestHeader(HttpServletRequest request) {
-    //从HTTP头部获取TOKEN
-    String token = request.getHeader(WebSecurityConfig.AUTHORIZATION_HEADER);
-    if (StringUtils.hasText(token)) {
-      return token;
+    @Override
+    public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
+        try {
+            HttpServletRequest request = (HttpServletRequest) servletRequest;
+            String requestURI = request.getRequestURI();
+            if (requestURI.contains("/auth/login")) {
+                filterChain.doFilter(servletRequest, servletResponse);
+            }
+            String jwt = getTokenFromRequestHeader(request);
+            if (StringUtils.hasText(jwt) && jwtUtils.validateToken(jwt)) {
+                //获取用户认证信息
+                Authentication authentication = jwtUtils.getAuthenticationParsingJwt(jwt);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+                filterChain.doFilter(servletRequest, servletResponse);
+            } else {
+                ((HttpServletResponse) servletResponse).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            }
+        } catch (ExpiredJwtException e) {
+            log.warn("Security exception user={}, reason={}", e.getClaims().getSubject(), e.getMessage());
+            ((HttpServletResponse) servletResponse).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        }
     }
-    return null;
-  }
+
+    /**
+     * 从请求头部获取token，如果token放在cookie，也可改成从cookie中获取
+     *
+     * @param request
+     * @return
+     */
+    private String getTokenFromRequestHeader(HttpServletRequest request) {
+        //从HTTP头部获取TOKEN
+        String token = request.getHeader(WebSecurityConfig.AUTHORIZATION_HEADER);
+        if (StringUtils.hasText(token)) {
+            return token;
+        }
+        return null;
+    }
 }

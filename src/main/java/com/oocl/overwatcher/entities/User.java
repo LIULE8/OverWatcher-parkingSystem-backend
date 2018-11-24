@@ -19,54 +19,54 @@ import java.util.List;
 @NoArgsConstructor
 public class User {
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  private String name;
+    private String name;
 
-  private String userName;
+    private String userName;
 
-  private String password;
+    private String password;
 
-  private String status;
+    private String status;
 
-  private String email;
+    private String email;
 
-  private String phone;
+    private String phone;
 
-  private Boolean alive = true;
+    private Boolean alive = true;
 
-  private ZonedDateTime signTime;
+    private ZonedDateTime signTime;
 
-  @ManyToMany(cascade = CascadeType.ALL, mappedBy = "users", fetch = FetchType.LAZY, targetEntity = Role.class)
-  private List<Role> roleList;
+    @ManyToMany(cascade = CascadeType.ALL, mappedBy = "users", fetch = FetchType.LAZY, targetEntity = Role.class)
+    private List<Role> roleList;
 
-  @OneToMany(cascade = CascadeType.ALL, mappedBy = "user", fetch = FetchType.LAZY)
-  private List<ParkingLot> parkingLotList = new ArrayList<>();
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "user", fetch = FetchType.LAZY)
+    private List<ParkingLot> parkingLotList = new ArrayList<>();
 
-  @JsonIgnore
-  @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
-  private List<Order> orderList = new ArrayList<>();
+    @JsonIgnore
+    @OneToMany(mappedBy = "user", fetch = FetchType.LAZY)
+    private List<Order> orderList = new ArrayList<>();
 
-  public User(String name) {
-    this.name = name;
-  }
+    public User(String name) {
+        this.name = name;
+    }
 
 
-  public User(String userName, String password) {
-    this.userName = userName;
-    this.password = password;
-  }
+    public User(String userName, String password) {
+        this.userName = userName;
+        this.password = password;
+    }
 
-  public User(Long id, String name, String password) {
-    this.name = name;
-    this.id = id;
-    this.password = password;
-  }
+    public User(Long id, String name, String password) {
+        this.name = name;
+        this.id = id;
+        this.password = password;
+    }
 
-  public User(String name, List<Role> roleList) {
-    this.name = name;
-    this.roleList = roleList;
-  }
+    public User(String name, List<Role> roleList) {
+        this.name = name;
+        this.roleList = roleList;
+    }
 }
