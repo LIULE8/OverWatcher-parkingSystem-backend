@@ -6,3 +6,10 @@ spring:
     show-sql: true
   jooq:
     sql-dialect: h2
+
+logging:
+  pattern:
+    console: "[%d{yyyy-MM-dd HH:mm:ss.SSS}] [${PID}] [%thread] %-5level %logger{36}.%M - %msg%n"
+    file: "[%d{yyyy-MM-dd HH:mm:ss.SSS}] [${PID}] [%thread] %-5level %logger{36}.%M - %msg%n"
+  level:
+    com.ect: DEBUG
