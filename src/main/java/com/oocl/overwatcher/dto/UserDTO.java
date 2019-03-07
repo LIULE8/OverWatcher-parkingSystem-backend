@@ -66,4 +66,8 @@ public class UserDTO {
      */
     private List<Long> parkingLotIdList;
 
+    public UserDTO(Long id, String name) {
+        this.id = id;
+        this.name = name;
+    }
 }
